@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:mummymap/presentation/pages/profile_setup/loading_screen.dart';
 
 class FinalMessage extends StatelessWidget {
-  final VoidCallback onComplete;
-
-  const FinalMessage({super.key, required this.onComplete});
+  const FinalMessage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +12,7 @@ class FinalMessage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'We\'ll show you to other moms and women groups nearby',
+           "We/'ll show you to other moms and women groups nearby",
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -22,7 +21,7 @@ class FinalMessage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'To do so we\'ll need to know where you are. After this you\'ll be added to groups with women in the same trimester as you.',
+       "To do so we\’ll need to know where you are. After this you\’ll be added to groups with women in the same trimester as you.",
             style: TextStyle(
               fontSize: 14,
               color: Color(0xFF9E9E9E),
@@ -34,7 +33,12 @@ class FinalMessage extends StatelessWidget {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: onComplete,
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => const LoadingScreen()),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF3F2868),
                 shape: RoundedRectangleBorder(

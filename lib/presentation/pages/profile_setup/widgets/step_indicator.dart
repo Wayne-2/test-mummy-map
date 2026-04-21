@@ -17,12 +17,12 @@ class StepIndicator extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Full width line behind circles
+         
           Container(
             height: 1,
             color: const Color(0xFFE0E0E0),
           ),
-          // Circles evenly spaced on top
+         
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: List.generate(4, (index) {

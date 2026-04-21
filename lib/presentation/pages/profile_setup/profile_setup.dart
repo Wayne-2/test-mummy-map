@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/presentation/profile_setup/steps/privacy.dart';
-import 'package:mummymap/presentation/profile_setup/steps/get_to_know_you.dart';
-import 'package:mummymap/presentation/profile_setup/steps/face_to_name.dart';
-import 'package:mummymap/presentation/profile_setup/steps/final_message.dart';
-import 'package:mummymap/presentation/profile_setup/widgets/step_indicator.dart';
+import 'package:mummymap/presentation/pages/profile_setup/steps/privacy.dart';
+import 'package:mummymap/presentation/pages/profile_setup/steps/get_to_know_you.dart';
+import 'package:mummymap/presentation/pages/profile_setup/steps/face_to_name.dart';
+import 'package:mummymap/presentation/pages/profile_setup/steps/final_message.dart';
+import 'package:mummymap/presentation/pages/profile_setup/widgets/step_indicator.dart';
 
 class ProfileSetup extends StatefulWidget {
   const ProfileSetup({super.key});
@@ -43,7 +43,7 @@ class _ProfileSetupState extends State<ProfileSetup> {
                   Privacy(onAgree: _nextStep),
                   GetToKnowYou(onComplete: _nextStep),
                   FaceToName(onComplete: _nextStep),
-                  FinalMessage(onComplete: _nextStep),
+                  const FinalMessage(),
                 ],
               ),
             ),

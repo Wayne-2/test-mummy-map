@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mummymap/presentation/auth/signin.dart';
-import 'package:mummymap/presentation//profile_setup/profile_setup.dart';
+import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
 
 class SignUp extends StatefulWidget {
   const SignUp({super.key});

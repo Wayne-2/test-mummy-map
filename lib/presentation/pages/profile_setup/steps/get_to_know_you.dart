@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:mummymap/presentation/profile_setup/widgets/setup_text_field.dart';
-import 'package:mummymap/presentation/profile_setup/widgets/setup_dropdown.dart';
+import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_text_field.dart';
+import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_dropdown.dart';
 
 class GetToKnowYou extends StatefulWidget {
   final VoidCallback onComplete;
