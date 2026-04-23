@@ -18,14 +18,14 @@ class TrimesterChart extends ConsumerWidget {
     {'trimester': '', 'month': '9', 'weeks': ['36', '37', '38', '39', '40']},
   ];
 
-  Color _rowColor(String trimester, String month) {
+  static Color rowColor(String trimester, String month) {
     final t = trimester.isNotEmpty ? trimester : _getTrimesterForMonth(month);
     if (t == '1') return const Color(0xFFFFF3E0);
     if (t == '2') return const Color(0xFFE8F5E9);
     return const Color(0xFFE3F2FD);
   }
 
-  String _getTrimesterForMonth(String month) {
+  static String _getTrimesterForMonth(String month) {
     final m = int.parse(month);
     if (m <= 3) return '1';
     if (m <= 6) return '2';
@@ -50,12 +50,10 @@ class TrimesterChart extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 12),
-          pregnancy == null
-              ? _EmptyState()
-              : _Chart(
-                  currentWeek: pregnancy.currentWeek,
-                  dueDate: pregnancy.dueDate,
-                ),
+          pregnancy == null ? _EmptyState() : _Chart(
+            currentWeek: pregnancy.currentWeek,
+            dueDate: pregnancy.dueDate,
+          ),
         ],
       ),
     );
@@ -75,8 +73,7 @@ class _EmptyState extends StatelessWidget {
       ),
       child: const Column(
         children: [
-          Icon(Icons.calendar_month_outlined,
-              size: 40, color: Color(0xFFBDBDBD)),
+          Icon(Icons.calendar_month_outlined, size: 40, color: Color(0xFFBDBDBD)),
           SizedBox(height: 12),
           Text(
             'Add your due date to see your trimester chart',
@@ -109,13 +106,11 @@ class _Chart extends StatelessWidget {
             final weeks = row['weeks'] as List<String>;
             final trimester = row['trimester'] as String;
             final month = row['month'] as String;
-            final color = TrimesterChart(
-                    ).._rowColor(trimester, month);
             return _buildRow(
               trimester: trimester,
               month: month,
               weeks: weeks,
-              color: _rowColor(trimester, month),
+              color: TrimesterChart.rowColor(trimester, month),
               currentWeek: currentWeek,
             );
           }),
@@ -129,22 +124,6 @@ class _Chart extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _rowColor(String trimester, String month) {
-    final t = trimester.isNotEmpty
-        ? trimester
-        : _getTrimesterForMonth(month);
-    if (t == '1') return const Color(0xFFFFF3E0);
-    if (t == '2') return const Color(0xFFE8F5E9);
-    return const Color(0xFFE3F2FD);
-  }
-
-  String _getTrimesterForMonth(String month) {
-    final m = int.parse(month);
-    if (m <= 3) return '1';
-    if (m <= 6) return '2';
-    return '3';
   }
 
   Widget _buildHeader() {
@@ -207,17 +186,13 @@ class _Chart extends StatelessWidget {
             child: Center(
               child: Text(
                 trimester,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.bold),
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ),
           ),
           Expanded(
             child: Center(
-              child: Text(
-                month,
-                style: const TextStyle(fontSize: 12),
-              ),
+              child: Text(month, style: const TextStyle(fontSize: 12)),
             ),
           ),
           Expanded(

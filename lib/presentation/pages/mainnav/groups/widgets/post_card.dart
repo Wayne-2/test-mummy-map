@@ -1,0 +1,254 @@
+import 'package:flutter/material.dart';
+import 'package:mummymap/presentation/pages/mainnav/groups/post_detail.dart';
+import 'package:mummymap/presentation/pages/mainnav/groups/create_post.dart';
+
+class PostCard extends StatelessWidget {
+  final Map<String, dynamic> post;
+
+  const PostCard({super.key, required this.post});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => PostDetail(post: post)),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor:
+                      Color(post['groupColor'] ?? 0xFFE8D5F5),
+                  child: Text(
+                    post['groupInitials'] ?? '??',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      RichText(
+                        text: TextSpan(
+                          children: [
+                            TextSpan(
+                              text: post['author'],
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            TextSpan(
+                              text: ' in ${post['group']}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF9E9E9E),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        post['time'],
+                        style: const TextStyle(
+                            fontSize: 11, color: Color(0xFF9E9E9E)),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.more_horiz, color: Color(0xFF9E9E9E)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              post['title'],
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            if (post['body'] != null && post['body'].isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                post['body'],
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF555555),
+                  height: 1.5,
+                ),
+              ),
+            ],
+            if (post['type'] == 'poll') ...[
+              const SizedBox(height: 12),
+              _PollWidget(options: post['pollOptions']),
+            ],
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.favorite_outline,
+                    size: 18, color: Color(0xFF9E9E9E)),
+                const SizedBox(width: 4),
+                Text('${post['likes']}',
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF9E9E9E))),
+                const SizedBox(width: 16),
+                const Icon(Icons.chat_bubble_outline,
+                    size: 18, color: Color(0xFF9E9E9E)),
+                const SizedBox(width: 4),
+                Text('${post['replies']}',
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF9E9E9E))),
+                const Spacer(),
+                const Icon(Icons.share_outlined,
+                    size: 18, color: Color(0xFF9E9E9E)),
+              ],
+            ),
+            const Divider(height: 20),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => PostDetail(post: post)),
+              ),
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0xFFE8D5F5),
+                    child: Icon(Icons.person,
+                        color: Color(0xFF3F2868), size: 14),
+                  ),
+                  const SizedBox(width: 10),
+                  const Text(
+                    'Add a reply...',
+                    style: TextStyle(
+                        fontSize: 13, color: Color(0xFFBDBDBD)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PollWidget extends StatefulWidget {
+  final List<dynamic> options;
+
+  const _PollWidget({required this.options});
+
+  @override
+  State<_PollWidget> createState() => _PollWidgetState();
+}
+
+class _PollWidgetState extends State<_PollWidget> {
+  int? _selectedIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Select one or more',
+          style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+        ),
+        const SizedBox(height: 8),
+        ...List.generate(widget.options.length, (index) {
+          final option = widget.options[index];
+          final isSelected = _selectedIndex == index;
+          final percent = option['percent'] as int;
+
+          return GestureDetector(
+            onTap: () => setState(() => _selectedIndex = index),
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isSelected
+                      ? const Color(0xFF3F2868)
+                      : const Color(0xFFE0E0E0),
+                ),
+              ),
+              child: Stack(
+                children: [
+                  FractionallySizedBox(
+                    widthFactor: percent / 100,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF3F2868),
+                        borderRadius: BorderRadius.circular(7),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          option['text'],
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: percent > 20
+                                ? Colors.white
+                                : const Color(0xFF1A1A1A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            Text(
+                              '$percent%',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: percent > 20
+                                    ? Colors.white
+                                    : const Color(0xFF1A1A1A),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${option['votes']} votes',
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.white70),
+                            ),
+                            if (isSelected) ...[
+                              const SizedBox(width: 4),
+                              const Icon(Icons.check_circle,
+                                  color: Colors.white, size: 16),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+}

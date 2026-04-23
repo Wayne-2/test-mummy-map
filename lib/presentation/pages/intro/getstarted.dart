@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/presentation/auth/signin.dart';
-import 'package:mummymap/presentation/intro/onboardingscreen.dart';
+import 'package:mummymap/presentation/pages/auth/signin.dart';
+import 'package:mummymap/presentation/pages/intro/onboardingscreen.dart';
 
 class Getstarted extends StatelessWidget {
   const Getstarted({super.key});

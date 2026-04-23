@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/presentation/auth/signup.dart';
+import 'package:mummymap/presentation/pages/auth/signup.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});

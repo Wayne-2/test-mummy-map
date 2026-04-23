@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mummymap/presentation/intro/splashscreen.dart';
+import 'package:mummymap/presentation/pages/intro/splashscreen.dart';
 
 void main() {
   runApp(
