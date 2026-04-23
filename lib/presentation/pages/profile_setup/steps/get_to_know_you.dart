@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_text_field.dart';
 import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_dropdown.dart';
+import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
 
-class GetToKnowYou extends StatefulWidget {
+
+class GetToKnowYou extends ConsumerStatefulWidget {
   final VoidCallback onComplete;
 
   const GetToKnowYou({super.key, required this.onComplete});
 
   @override
-  State<GetToKnowYou> createState() => _GetToKnowYouState();
+  ConsumerState<GetToKnowYou> createState() => _GetToKnowYouState();
 }
 
-class _GetToKnowYouState extends State<GetToKnowYou> {
+class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
   int _subIndex = 0;
 
   final _nameController = TextEditingController();
@@ -22,6 +25,7 @@ class _GetToKnowYouState extends State<GetToKnowYou> {
 
   String? _basedOn;
   final _dateController = TextEditingController();
+  DateTime? _selectedDate;
 
   @override
   void dispose() {
@@ -31,10 +35,17 @@ class _GetToKnowYouState extends State<GetToKnowYou> {
     super.dispose();
   }
 
-  void _nextSub() {
+  void _nextSub() async {
     if (_subIndex == 0) {
       setState(() => _subIndex = 1);
     } else {
+      if (_selectedDate != null && _basedOn != null) {
+        await ref.read(pregnancyProvider.notifier).savePregnancy(
+              method: _basedOn!,
+              date: _selectedDate!,
+              calculator: ref.read(calculateDueDateUseCaseProvider),
+            );
+      }
       widget.onComplete();
     }
   }
@@ -52,28 +63,19 @@ class _GetToKnowYouState extends State<GetToKnowYou> {
     }
   }
 
-  Future<void> _pickDueDate() async {
+  Future<void> _pickDate() async {
+    final isEstimated = _basedOn == 'Estimated Due Date';
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
+      firstDate: isEstimated ? DateTime.now() : DateTime(2020),
+      lastDate: isEstimated
+          ? DateTime.now().add(const Duration(days: 365))
+          : DateTime.now(),
       builder: (context, child) => _datePickerTheme(context, child),
     );
     if (picked != null) {
-      _dateController.text = DateFormat('MMMM d, yyyy').format(picked);
-    }
-  }
-
-  Future<void> _pickConceptionOrPeriodDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      builder: (context, child) => _datePickerTheme(context, child),
-    );
-    if (picked != null) {
+      setState(() => _selectedDate = picked);
       _dateController.text = DateFormat('MMMM d, yyyy').format(picked);
     }
   }
@@ -112,12 +114,11 @@ class _GetToKnowYouState extends State<GetToKnowYou> {
           onBasedOnChanged: (val) {
             setState(() {
               _basedOn = val;
+              _selectedDate = null;
               _dateController.clear();
             });
           },
-          onPickDate: _basedOn == 'Estimated Due Date'
-              ? _pickDueDate
-              : _pickConceptionOrPeriodDate,
+          onPickDate: _pickDate,
           onContinue: _nextSub,
         ),
       ],

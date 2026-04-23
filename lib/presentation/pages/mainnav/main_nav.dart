@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mummymap/presentation/pages/mainnav/home/home_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -11,7 +12,7 @@ class _MainNavState extends State<MainNav> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    const Scaffold(body: Center(child: Text('Home'))),
+    const HomeScreen(),
     const Scaffold(body: Center(child: Text('Track'))),
     const Scaffold(body: Center(child: Text('Groups'))),
     const Scaffold(body: Center(child: Text('Calendar'))),
@@ -46,7 +47,7 @@ class _MainNavState extends State<MainNav> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite_outline),
-            activeIcon: Icon(Icons.favorite),
+            activeIcon: Icon(Icons.insert_chart),
             label: 'Track',
           ),
           BottomNavigationBarItem(

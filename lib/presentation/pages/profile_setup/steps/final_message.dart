@@ -12,7 +12,7 @@ class FinalMessage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-           "We/'ll show you to other moms and women groups nearby",
+           "We\'ll show you to other moms and women groups nearby",
             style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
