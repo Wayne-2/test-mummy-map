@@ -46,7 +46,7 @@ class _GroupDetailState extends State<GroupDetail> {
               backgroundColor: const Color(0xFF3F2868),
               onPressed: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const CreatePost ()),
+                MaterialPageRoute(builder: (_) => const CreatePost()),
               ),
               child: const Icon(Icons.edit, color: Colors.white),
             )

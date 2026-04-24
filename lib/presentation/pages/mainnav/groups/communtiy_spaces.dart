@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
 class CommunitySpaces extends StatelessWidget {
-  const CommunitySpaces({super.key, VoidCallback? onExploreGroups});
+  final VoidCallback? onExploreGroups;
+
+  const CommunitySpaces({super.key, this.onExploreGroups});
 
   @override
   Widget build(BuildContext context) {
-    // Empty for new users, till backend
     final List groups = [];
 
     return Padding(
@@ -58,7 +59,7 @@ class CommunitySpaces extends StatelessWidget {
                         width: 160,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: onExploreGroups,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3F2868),
                             shape: RoundedRectangleBorder(

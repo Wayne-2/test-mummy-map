@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mummymap/presentation/pages/mainnav/home/home_screen.dart';
+import 'package:mummymap/presentation/pages/mainnav/groups/groups_screen.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -10,14 +11,19 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int _currentIndex = 0;
+  late final List<Widget> _pages;
 
-  final List<Widget> _pages = [
-    const HomeScreen(),
-    const Scaffold(body: Center(child: Text('Track'))),
-    const Scaffold(body: Center(child: Text('Groups'))),
-    const Scaffold(body: Center(child: Text('Calendar'))),
-    const Scaffold(body: Center(child: Text('Shop'))),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      HomeScreen(onExploreGroups: () => setState(() => _currentIndex = 2)),
+      const Scaffold(body: Center(child: Text('Track'))),
+      const GroupsScreen(),
+      const Scaffold(body: Center(child: Text('Calendar'))),
+      const Scaffold(body: Center(child: Text('Shop'))),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +53,7 @@ class _MainNavState extends State<MainNav> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite_outline),
-            activeIcon: Icon(Icons.insert_chart),
+            activeIcon: Icon(Icons.favorite),
             label: 'Track',
           ),
           BottomNavigationBarItem(

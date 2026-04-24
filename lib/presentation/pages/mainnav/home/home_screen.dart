@@ -8,7 +8,9 @@ import 'package:mummymap/presentation/pages/mainnav/home/widgets/mood_selector.d
 import 'package:mummymap/presentation/pages/mainnav/home/widgets/community_spaces.dart';
 
 class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onExploreGroups;
+
+  const HomeScreen({super.key, this.onExploreGroups});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,23 +20,23 @@ class HomeScreen extends ConsumerWidget {
         child: Column(
           children: [
             _HomeAppBar(),
-            const Expanded(
+            Expanded(
               child: SingleChildScrollView(
-                padding: EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.only(bottom: 24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    HeroCard(),
-                    SizedBox(height: 24),
-                    TrimesterChart(),
-                    SizedBox(height: 24),
-                    FunFactsCard(),
-                    SizedBox(height: 24),
-                    UpcomingAppointments(),
-                    SizedBox(height: 24),
-                    MoodSelector(),
-                    SizedBox(height: 24),
-                    CommunitySpaces(),
+                    const HeroCard(),
+                    const SizedBox(height: 24),
+                    const TrimesterChart(),
+                    const SizedBox(height: 24),
+                    const FunFactsCard(),
+                    const SizedBox(height: 24),
+                    const UpcomingAppointments(),
+                    const SizedBox(height: 24),
+                    const MoodSelector(),
+                    const SizedBox(height: 24),
+                    CommunitySpaces(onExploreGroups: onExploreGroups),
                   ],
                 ),
               ),

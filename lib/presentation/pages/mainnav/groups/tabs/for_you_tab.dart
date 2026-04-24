@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/widgets/post_card.dart';
 
-class ForYouTab extends StatelessWidget {
-  const ForYouTab({super.key});
+class ForYouTab extends ConsumerWidget {
+  final VoidCallback onExplore;
 
-  // Empty for new users
-  static const List<Map<String, dynamic>> _posts = [];
+  const ForYouTab({super.key, required this.onExplore});
 
   @override
-  Widget build(BuildContext context) {
-    if (_posts.isEmpty) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final posts = ref.watch(groupsProvider).forYouPosts;
+
+    if (posts.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -22,10 +25,9 @@ class ForYouTab extends StatelessWidget {
               const Text(
                 'Nothing here yet',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
-                ),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A)),
               ),
               const SizedBox(height: 8),
               const Text(
@@ -35,12 +37,11 @@ class ForYouTab extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               ElevatedButton(
-                onPressed: () {},
+                onPressed: onExplore,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+                      borderRadius: BorderRadius.circular(30)),
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(
                       horizontal: 32, vertical: 14),
@@ -48,10 +49,9 @@ class ForYouTab extends StatelessWidget {
                 child: const Text(
                   'Explore Groups',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white),
                 ),
               ),
             ],
@@ -62,9 +62,9 @@ class ForYouTab extends StatelessWidget {
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: _posts.length,
+      itemCount: posts.length,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => PostCard(post: _posts[index]),
+      itemBuilder: (context, index) => PostCard(post: posts[index]),
     );
   }
 }
