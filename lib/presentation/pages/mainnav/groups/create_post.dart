@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/providers/groups_provider.dart';
 
-class CreatePost extends StatefulWidget {
-  const CreatePost({super.key});
+class CreatePost extends ConsumerStatefulWidget {
+  final String groupId;
+
+  const CreatePost({super.key, required this.groupId});
 
   @override
-  State<CreatePost> createState() => _CreatePostState();
+  ConsumerState<CreatePost> createState() => _CreatePostState();
 }
 
-class _CreatePostState extends State<CreatePost> {
+class _CreatePostState extends ConsumerState<CreatePost> {
   final _postController = TextEditingController();
   String _audience = 'Everyone';
   bool _showPoll = false;
@@ -27,7 +31,45 @@ class _CreatePostState extends State<CreatePost> {
     super.dispose();
   }
 
+  void _submitPost() {
+    final text = _postController.text.trim();
+    if (text.isEmpty) return;
+
+    final state = ref.read(groupsProvider);
+    final group = state.groups.firstWhere((g) => g.id == widget.groupId);
+
+    List<PollOption> pollOptions = [];
+    if (_showPoll) {
+      pollOptions = _pollOptions
+          .where((c) => c.text.trim().isNotEmpty)
+          .map((c) => PollOption(text: c.text.trim(), votes: 0))
+          .toList();
+    }
+
+    final post = GroupPost(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      groupId: widget.groupId,
+      groupInitials: group.name.substring(0, 2),
+      groupColor: 0xFFE57373,
+      author: 'You',
+      group: group.name,
+      time: 'Just now',
+      title: text,
+      body: '',
+      likes: 0,
+      replies: 0,
+      type: _showPoll ? 'poll' : 'text',
+      pollOptions: pollOptions,
+    );
+
+    ref.read(groupsProvider.notifier).addPost(post);
+    Navigator.pop(context);
+  }
+
   void _showAudienceSelector() {
+    final state = ref.read(groupsProvider);
+    final joinedGroups = state.joinedGroups;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -36,6 +78,7 @@ class _CreatePostState extends State<CreatePost> {
       ),
       builder: (_) => _AudienceSelector(
         selected: _audience,
+        groups: joinedGroups,
         onSelected: (val) {
           setState(() => _audience = val);
           Navigator.pop(context);
@@ -54,33 +97,31 @@ class _CreatePostState extends State<CreatePost> {
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
-                    child: const Icon(Icons.close, color: Color(0xFF1A1A1A)),
+                    child:
+                        const Icon(Icons.close, color: Color(0xFF1A1A1A)),
                   ),
                   ElevatedButton(
-                    onPressed: isPostReady ? () {} : null,
+                    onPressed: isPostReady ? _submitPost : null,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF3F2868),
                       disabledBackgroundColor: const Color(0xFFBDBDBD),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
+                          borderRadius: BorderRadius.circular(20)),
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 24, vertical: 10),
                     ),
-                    child: const Text(
-                      'Post',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                    child: const Text('Post',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
@@ -108,12 +149,10 @@ class _CreatePostState extends State<CreatePost> {
                       ),
                       child: Row(
                         children: [
-                          Text(
-                            _audience,
-                            style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF1A1A1A)),
-                          ),
+                          Text(_audience,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: Color(0xFF1A1A1A))),
                           const SizedBox(width: 4),
                           const Icon(Icons.keyboard_arrow_down,
                               size: 16, color: Color(0xFF9E9E9E)),
@@ -143,26 +182,24 @@ class _CreatePostState extends State<CreatePost> {
                       style: const TextStyle(
                           fontSize: 15, color: Color(0xFF1A1A1A)),
                     ),
-                    if (_showPoll) _PollCreator(
-                      options: _pollOptions,
-                      pollLength: _pollLength,
-                      allowMultiple: _allowMultiple,
-                      onPollLengthChanged: (val) =>
-                          setState(() => _pollLength = val),
-                      onAllowMultipleChanged: (val) =>
-                          setState(() => _allowMultiple = val),
-                      onAddOption: () {
-                        setState(() => _pollOptions
-                            .add(TextEditingController()));
-                      },
-                      onClose: () =>
-                          setState(() => _showPoll = false),
-                    ),
+                    if (_showPoll)
+                      _PollCreator(
+                        options: _pollOptions,
+                        pollLength: _pollLength,
+                        allowMultiple: _allowMultiple,
+                        onPollLengthChanged: (val) =>
+                            setState(() => _pollLength = val),
+                        onAllowMultipleChanged: (val) =>
+                            setState(() => _allowMultiple = val),
+                        onAddOption: () => setState(
+                            () => _pollOptions.add(TextEditingController())),
+                        onClose: () => setState(() => _showPoll = false),
+                      ),
                   ],
                 ),
               ),
             ),
-            _MediaRow(context: context),
+            _MediaRow(),
             _BottomBar(
               onTap: (action) {
                 if (action == 'poll') {
@@ -211,13 +248,11 @@ class _PollCreator extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Poll',
-                style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                    color: Color(0xFF1A1A1A)),
-              ),
+              const Text('Poll',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: Color(0xFF1A1A1A))),
               GestureDetector(
                 onTap: onClose,
                 child: const Icon(Icons.close, color: Color(0xFF9E9E9E)),
@@ -232,28 +267,16 @@ class _PollCreator extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: const Color(0xFF3F2868)),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: options[index],
-                      decoration: InputDecoration(
-                        hintText: 'Choice ${index + 1}',
-                        hintStyle: const TextStyle(
-                            color: Color(0xFFBDBDBD), fontSize: 13),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
-                      ),
-                    ),
-                  ),
-                  if (index == 0)
-                    const Padding(
-                      padding: EdgeInsets.only(right: 8),
-                      child: Icon(Icons.drag_handle,
-                          color: Color(0xFF9E9E9E)),
-                    ),
-                ],
+              child: TextField(
+                controller: options[index],
+                decoration: InputDecoration(
+                  hintText: 'Choice ${index + 1}',
+                  hintStyle: const TextStyle(
+                      color: Color(0xFFBDBDBD), fontSize: 13),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12, vertical: 12),
+                ),
               ),
             );
           }),
@@ -263,13 +286,11 @@ class _PollCreator extends StatelessWidget {
               children: [
                 Icon(Icons.add, color: Color(0xFF3F2868), size: 18),
                 SizedBox(width: 4),
-                Text(
-                  'Add Choice',
-                  style: TextStyle(
-                      color: Color(0xFF3F2868),
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13),
-                ),
+                Text('Add Choice',
+                    style: TextStyle(
+                        color: Color(0xFF3F2868),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13)),
               ],
             ),
           ),
@@ -280,18 +301,15 @@ class _PollCreator extends StatelessWidget {
               const Text('Poll length',
                   style: TextStyle(
                       fontSize: 13, color: Color(0xFF1A1A1A))),
-              GestureDetector(
-                onTap: () {},
-                child: Row(
-                  children: [
-                    Text(pollLength,
-                        style: const TextStyle(
-                            fontSize: 13, color: Color(0xFF1A1A1A))),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down,
-                        size: 16, color: Color(0xFF9E9E9E)),
-                  ],
-                ),
+              const Row(
+                children: [
+                  Text('1 day',
+                      style: TextStyle(
+                          fontSize: 13, color: Color(0xFF1A1A1A))),
+                  SizedBox(width: 4),
+                  Icon(Icons.keyboard_arrow_down,
+                      size: 16, color: Color(0xFF9E9E9E)),
+                ],
               ),
             ],
           ),
@@ -316,17 +334,14 @@ class _PollCreator extends StatelessWidget {
 }
 
 class _MediaRow extends StatelessWidget {
-  final BuildContext context;
-
-  const _MediaRow({required this.context});
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 80,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         children: [
           Container(
             width: 64,
@@ -348,7 +363,8 @@ class _MediaRow extends StatelessWidget {
                 color: const Color(0xFFE8D5F5),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(Icons.image, color: Color(0xFF3F2868)),
+              child:
+                  const Icon(Icons.image, color: Color(0xFF3F2868)),
             ),
           ),
         ],
@@ -381,51 +397,39 @@ class _BottomBar extends StatelessWidget {
           const Text('Everyone can reply',
               style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
           const Spacer(),
-          _BarIcon(
-              icon: Icons.image_outlined,
-              onTap: () => onTap('image')),
+          GestureDetector(
+            onTap: () => onTap('image'),
+            child: const Icon(Icons.image_outlined,
+                color: Color(0xFF9E9E9E), size: 22),
+          ),
           const SizedBox(width: 20),
-          _BarIcon(icon: Icons.gif, onTap: () => onTap('gif')),
+          GestureDetector(
+            onTap: () => onTap('gif'),
+            child:
+                const Icon(Icons.gif, color: Color(0xFF9E9E9E), size: 22),
+          ),
           const SizedBox(width: 20),
-          _BarIcon(
-              icon: Icons.poll_outlined,
-              onTap: () => onTap('poll')),
+          GestureDetector(
+            onTap: () => onTap('poll'),
+            child: const Icon(Icons.poll_outlined,
+                color: Color(0xFF9E9E9E), size: 22),
+          ),
         ],
       ),
     );
   }
 }
 
-class _BarIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _BarIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Icon(icon, color: const Color(0xFF9E9E9E), size: 22),
-    );
-  }
-}
-
 class _AudienceSelector extends StatelessWidget {
   final String selected;
+  final List<CommunityGroup> groups;
   final ValueChanged<String> onSelected;
 
-  const _AudienceSelector(
-      {required this.selected, required this.onSelected});
-
-  static const _groups = [
-    {'name': 'Sporty Moms', 'members': '124k Members'},
-    {'name': 'November Mommies 2025', 'members': '23.1k Members'},
-    {'name': 'Socially Awkward Moms', 'members': '11.9k Members'},
-    {'name': 'Exclusively Camping Momas', 'members': '690 Members'},
-    {'name': 'Boy Moms', 'members': '5.6k Members'},
-    {'name': 'GIRLIE MOMMAS', 'members': '5.6k Members'},
-  ];
+  const _AudienceSelector({
+    required this.selected,
+    required this.groups,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -447,14 +451,11 @@ class _AudienceSelector extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Center(
-            child: Text(
-              'Choose audience',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
+            child: Text('Choose audience',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A))),
           ),
           const SizedBox(height: 16),
           ListTile(
@@ -471,45 +472,41 @@ class _AudienceSelector extends StatelessWidget {
             title: const Text('Everyone',
                 style: TextStyle(fontWeight: FontWeight.w600)),
             trailing: selected == 'Everyone'
-                ? const Icon(Icons.check_circle,
-                    color: Colors.green)
+                ? const Icon(Icons.check_circle, color: Colors.green)
                 : null,
           ),
-          const Divider(),
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'My Groups',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-          ),
-          ..._groups.map(
-            (group) => ListTile(
-              onTap: () => onSelected(group['name']!),
-              leading: CircleAvatar(
-                backgroundColor: const Color(0xFFE8D5F5),
-                child: Text(
-                  group['name']!.substring(0, 2),
-                  style: const TextStyle(
-                      color: Color(0xFF3F2868),
+          if (groups.isNotEmpty) ...[
+            const Divider(),
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('My Groups',
+                  style: TextStyle(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      fontSize: 12),
-                ),
-              ),
-              title: Text(group['name']!,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w500, fontSize: 14)),
-              subtitle: Text(group['members']!,
-                  style: const TextStyle(fontSize: 12)),
-              trailing: selected == group['name']
-                  ? const Icon(Icons.check_circle, color: Colors.green)
-                  : null,
+                      color: Color(0xFF1A1A1A))),
             ),
-          ),
+            ...groups.map(
+              (group) => ListTile(
+                onTap: () => onSelected(group.name),
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFE8D5F5),
+                  child: Text(group.name.substring(0, 2),
+                      style: const TextStyle(
+                          color: Color(0xFF3F2868),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12)),
+                ),
+                title: Text(group.name,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w500, fontSize: 14)),
+                subtitle: Text('${group.members} Members',
+                    style: const TextStyle(fontSize: 12)),
+                trailing: selected == group.name
+                    ? const Icon(Icons.check_circle, color: Colors.green)
+                    : null,
+              ),
+            ),
+          ],
         ],
       ),
     );

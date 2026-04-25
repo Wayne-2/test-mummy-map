@@ -26,6 +26,10 @@ class _GroupsScreenState extends State<GroupsScreen>
     super.dispose();
   }
 
+  void _goToExplore() {
+    _tabController.animateTo(1);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -34,14 +38,28 @@ class _GroupsScreenState extends State<GroupsScreen>
         child: Column(
           children: [
             _GroupsAppBar(),
-            _GroupsTabBar(controller: _tabController),
+            TabBar(
+              controller: _tabController,
+              labelColor: const Color(0xFF3F2868),
+              unselectedLabelColor: const Color(0xFF9E9E9E),
+              indicatorColor: const Color(0xFF3F2868),
+              indicatorWeight: 2,
+              labelStyle: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w600),
+              unselectedLabelStyle: const TextStyle(fontSize: 15),
+              tabs: const [
+                Tab(text: 'For You'),
+                Tab(text: 'Explore'),
+                Tab(text: 'Groups'),
+              ],
+            ),
             Expanded(
               child: TabBarView(
                 controller: _tabController,
-                children: const [
-                  ForYouTab(),
-                  ExploreTab(),
-                  GroupsTab(),
+                children: [
+                  ForYouTab(onExplore: _goToExplore),
+                  const ExploreTab(),
+                  const GroupsTab(),
                 ],
               ),
             ),
@@ -63,7 +81,8 @@ class _GroupsAppBar extends StatelessWidget {
           CircleAvatar(
             radius: 20,
             backgroundColor: const Color(0xFFE8D5F5),
-            child: const Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+            child:
+                const Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -76,18 +95,16 @@ class _GroupsAppBar extends StatelessWidget {
                     TextSpan(
                       text: 'Mummy',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF3F2868),
-                      ),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF3F2868)),
                     ),
                     TextSpan(
                       text: 'map',
                       style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF00BCD4),
-                      ),
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF00BCD4)),
                     ),
                   ],
                 ),
@@ -101,33 +118,6 @@ class _GroupsAppBar extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _GroupsTabBar extends StatelessWidget {
-  final TabController controller;
-
-  const _GroupsTabBar({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return TabBar(
-      controller: controller,
-      labelColor: const Color(0xFF3F2868),
-      unselectedLabelColor: const Color(0xFF9E9E9E),
-      indicatorColor: const Color(0xFF3F2868),
-      indicatorWeight: 2,
-      labelStyle: const TextStyle(
-        fontSize: 15,
-        fontWeight: FontWeight.w600,
-      ),
-      unselectedLabelStyle: const TextStyle(fontSize: 15),
-      tabs: const [
-        Tab(text: 'For You'),
-        Tab(text: 'Explore'),
-        Tab(text: 'Groups'),
-      ],
     );
   }
 }

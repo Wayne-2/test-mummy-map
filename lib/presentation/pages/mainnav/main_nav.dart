@@ -52,8 +52,8 @@ class _MainNavState extends State<MainNav> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.favorite_outline),
-            activeIcon: Icon(Icons.favorite),
+            icon: Icon(Icons.insert_chart_outlined),
+            activeIcon: Icon(Icons.insert_chart),
             label: 'Track',
           ),
           BottomNavigationBarItem(
