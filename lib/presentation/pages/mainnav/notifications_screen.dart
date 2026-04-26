@@ -58,37 +58,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   void _markAsRead(String id) {
     setState(() {
-      final n = _notifications.firstWhere((n) => n.id == id);
-      n.isRead = true;
+      _notifications.firstWhere((n) => n.id == id).isRead = true;
     });
-  }
-
-  Map<String, List<AppNotification>> _groupByDate(
-      List<AppNotification> list) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-
-    final Map<String, List<AppNotification>> grouped = {};
-
-    for (final n in list) {
-      final d = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
-      String label;
-      if (d == today) {
-        label = 'Today';
-      } else if (d == yesterday) {
-        label = 'Yesterday';
-      } else {
-        final months = [
-          '', 'January', 'February', 'March', 'April', 'May', 'June',
-          'July', 'August', 'September', 'October', 'November', 'December'
-        ];
-        label = months[n.createdAt.month];
-      }
-      grouped.putIfAbsent(label, () => []).add(n);
-    }
-
-    return grouped;
   }
 
   IconData _iconFor(_NotifType type) {
@@ -109,24 +80,57 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inMinutes < 60) return '${diff.inMinutes} Mins Ago';
     if (diff.inHours < 24) return '${diff.inHours} Hours Ago';
-    final months = [
+    const months = [
       '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    return '${months[n.createdAt.month]} ${n.createdAt.day}, ${n.createdAt.year} • ${_formatTime(n.createdAt)}';
+    final h = n.createdAt.hour > 12
+        ? n.createdAt.hour - 12
+        : n.createdAt.hour == 0
+            ? 12
+            : n.createdAt.hour;
+    final m = n.createdAt.minute.toString().padLeft(2, '0');
+    final period = n.createdAt.hour >= 12 ? 'PM' : 'AM';
+    return '${months[n.createdAt.month]} ${n.createdAt.day}, ${n.createdAt.year} • $h:$m $period';
   }
 
-  String _formatTime(DateTime dt) {
-    final h = dt.hour > 12 ? dt.hour - 12 : dt.hour == 0 ? 12 : dt.hour;
-    final m = dt.minute.toString().padLeft(2, '0');
-    final period = dt.hour >= 12 ? 'PM' : 'AM';
-    return '$h:$m $period';
+  Map<String, List<AppNotification>> _groupByDate(List<AppNotification> list) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    const months = [
+      '', 'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    final Map<String, List<AppNotification>> grouped = {};
+    for (final n in list) {
+      final d = DateTime(n.createdAt.year, n.createdAt.month, n.createdAt.day);
+      final String label;
+      if (d == today) {
+        label = 'Today';
+      } else if (d == yesterday) {
+        label = 'Yesterday';
+      } else {
+        label = months[n.createdAt.month];
+      }
+      grouped.putIfAbsent(label, () => []).add(n);
+    }
+    return grouped;
+  }
+
+  List<dynamic> _buildItems(Map<String, List<AppNotification>> grouped) {
+    final items = <dynamic>[];
+    for (final entry in grouped.entries) {
+      items.add(entry.key);
+      items.addAll(entry.value);
+    }
+    return items;
   }
 
   @override
   Widget build(BuildContext context) {
     final grouped = _groupByDate(_filtered);
-    final hasUnread = _unreadCount > 0;
+    final items = _buildItems(grouped);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -156,12 +160,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                     ],
                   ),
-                  if (_notifications.isNotEmpty && hasUnread)
+                  if (_unreadCount > 0)
                     GestureDetector(
                       onTap: _markAllAsRead,
                       child: Row(
-                        children: [
-                          const Text(
+                        children: const [
+                          Text(
                             'Mark All As Read',
                             style: TextStyle(
                               fontSize: 13,
@@ -169,8 +173,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 4),
-                          const Icon(Icons.done_all,
+                          SizedBox(width: 4),
+                          Icon(Icons.done_all,
                               size: 16, color: Color(0xFF3F2868)),
                         ],
                       ),
@@ -178,54 +182,41 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ],
               ),
             ),
-            if (_notifications.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: _FilterBar(
-                  active: _activeTab,
-                  total: _notifications.length,
-                  unread: _unreadCount,
-                  read: _readCount,
-                  onChanged: (tab) => setState(() => _activeTab = tab),
-                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _FilterBar(
+                active: _activeTab,
+                total: _notifications.length,
+                unread: _unreadCount,
+                read: _readCount,
+                onChanged: (tab) => setState(() => _activeTab = tab),
               ),
-            ],
+            ),
             Expanded(
-              child: _notifications.isEmpty
-                  ? _EmptyState()
-                  : _filtered.isEmpty
-                      ? _EmptyFilterState(tab: _activeTab)
-                      : ListView.builder(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          itemCount: _buildItems(grouped).length,
-                          itemBuilder: (context, index) {
-                            final item = _buildItems(grouped)[index];
-                            if (item is String) {
-                              return _DateHeader(label: item);
-                            }
-                            final n = item as AppNotification;
-                            return _NotificationTile(
-                              notification: n,
-                              icon: _iconFor(n.type),
-                              timeLabel: _timeLabel(n),
-                              onTap: () => _markAsRead(n.id),
-                            );
-                          },
-                        ),
+              child: _filtered.isEmpty
+                  ? _EmptyState(tab: _activeTab)
+                  : ListView.builder(
+                      padding: const EdgeInsets.only(bottom: 24),
+                      itemCount: items.length,
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        if (item is String) {
+                          return _DateHeader(label: item);
+                        }
+                        final n = item as AppNotification;
+                        return _NotificationTile(
+                          notification: n,
+                          icon: _iconFor(n.type),
+                          timeLabel: _timeLabel(n),
+                          onTap: () => _markAsRead(n.id),
+                        );
+                      },
+                    ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  List<dynamic> _buildItems(Map<String, List<AppNotification>> grouped) {
-    final items = <dynamic>[];
-    for (final entry in grouped.entries) {
-      items.add(entry.key);
-      items.addAll(entry.value);
-    }
-    return items;
   }
 }
 
@@ -316,8 +307,8 @@ class _Tab extends StatelessWidget {
               ),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 7, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: selected
                       ? Colors.white.withOpacity(0.25)
@@ -474,64 +465,34 @@ class _NotificationTile extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(40),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8D5F5),
-                borderRadius: BorderRadius.circular(24),
-              ),
-              child: const Icon(
-                Icons.notifications_none_outlined,
-                size: 44,
-                color: Color(0xFF3F2868),
-              ),
-            ),
-            const SizedBox(height: 24),
-            const Text(
-              'No notifications yet',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'When you get notifications about your pregnancy, appointments or community activity they\'ll show up here.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF9E9E9E),
-                height: 1.6,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyFilterState extends StatelessWidget {
   final _FilterTab tab;
 
-  const _EmptyFilterState({required this.tab});
+  const _EmptyState({required this.tab});
 
   @override
   Widget build(BuildContext context) {
-    final label = tab == _FilterTab.unread ? 'unread' : 'read';
+    final String title;
+    final String subtitle;
+
+    switch (tab) {
+      case _FilterTab.unread:
+        title = 'No unread notifications';
+        subtitle = 'You\'re all caught up!';
+        break;
+      case _FilterTab.read:
+        title = 'No read notifications';
+        subtitle = 'Notifications you\'ve opened will appear here.';
+        break;
+      case _FilterTab.all:
+        title = 'No notifications yet';
+        subtitle =
+            'When you get notifications about your pregnancy, appointments or community activity they\'ll show up here.';
+        break;
+    }
+
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.symmetric(horizontal: 40),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -550,11 +511,22 @@ class _EmptyFilterState extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             Text(
-              'No $label notifications',
+              title,
+              textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              subtitle,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Color(0xFF9E9E9E),
+                height: 1.6,
               ),
             ),
           ],

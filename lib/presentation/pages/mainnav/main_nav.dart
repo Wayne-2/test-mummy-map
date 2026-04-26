@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mummymap/presentation/pages/mainnav/home/home_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/groups_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/notifications_screen.dart';
-
+import 'package:mummymap/presentation/pages/mainnav/side/profile_menu.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -13,6 +13,7 @@ class MainNav extends StatefulWidget {
 
 class _MainNavState extends State<MainNav> {
   int _currentIndex = 0;
+  bool _menuOpen = false;
   late final List<Widget> _pages;
 
   void _openNotifications() {
@@ -22,6 +23,9 @@ class _MainNavState extends State<MainNav> {
     );
   }
 
+  void _openMenu() => setState(() => _menuOpen = true);
+  void _closeMenu() => setState(() => _menuOpen = false);
+
   @override
   void initState() {
     super.initState();
@@ -29,9 +33,13 @@ class _MainNavState extends State<MainNav> {
       HomeScreen(
         onExploreGroups: () => setState(() => _currentIndex = 2),
         onNotifications: _openNotifications,
+        onProfileTap: _openMenu,
       ),
       const Scaffold(body: Center(child: Text('Track'))),
-      GroupsScreen(onNotifications: _openNotifications),
+      GroupsScreen(
+        onNotifications: _openNotifications,
+        onProfileTap: _openMenu,
+      ),
       const Scaffold(body: Center(child: Text('Calendar'))),
       const Scaffold(body: Center(child: Text('Shop'))),
     ];
@@ -40,9 +48,15 @@ class _MainNavState extends State<MainNav> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _pages,
+          ),
+          if (_menuOpen)
+            ProfileMenu(onClose: _closeMenu),
+        ],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,

@@ -10,8 +10,14 @@ import 'package:mummymap/presentation/pages/mainnav/home/widgets/community_space
 class HomeScreen extends ConsumerWidget {
   final VoidCallback? onExploreGroups;
   final VoidCallback? onNotifications;
+  final VoidCallback? onProfileTap;
 
-  const HomeScreen({super.key, this.onExploreGroups, this.onNotifications});
+  const HomeScreen({
+    super.key,
+    this.onExploreGroups,
+    this.onNotifications,
+    this.onProfileTap,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,7 +26,10 @@ class HomeScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _HomeAppBar(onNotifications: onNotifications),
+            _HomeAppBar(
+              onNotifications: onNotifications,
+              onProfileTap: onProfileTap,
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 24),
@@ -51,8 +60,9 @@ class HomeScreen extends ConsumerWidget {
 
 class _HomeAppBar extends StatelessWidget {
   final VoidCallback? onNotifications;
+  final VoidCallback? onProfileTap;
 
-  const _HomeAppBar({this.onNotifications});
+  const _HomeAppBar({this.onNotifications, this.onProfileTap});
 
   @override
   Widget build(BuildContext context) {
@@ -61,10 +71,13 @@ class _HomeAppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFFE8D5F5),
-            child: const Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+          GestureDetector(
+            onTap: onProfileTap,
+            child: const CircleAvatar(
+              radius: 20,
+              backgroundColor: Color(0xFFE8D5F5),
+              child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+            ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,

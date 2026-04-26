@@ -5,8 +5,13 @@ import 'package:mummymap/presentation/pages/mainnav/groups/tabs/groups_tab.dart'
 
 class GroupsScreen extends StatefulWidget {
   final VoidCallback? onNotifications;
+  final VoidCallback? onProfileTap;
 
-  const GroupsScreen({super.key, this.onNotifications});
+  const GroupsScreen({
+    super.key,
+    this.onNotifications,
+    this.onProfileTap,
+  });
 
   @override
   State<GroupsScreen> createState() => _GroupsScreenState();
@@ -37,7 +42,10 @@ class _GroupsScreenState extends State<GroupsScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _GroupsAppBar(onNotifications: widget.onNotifications),
+            _GroupsAppBar(
+              onNotifications: widget.onNotifications,
+              onProfileTap: widget.onProfileTap,
+            ),
             TabBar(
               controller: _tabController,
               labelColor: const Color(0xFF3F2868),
@@ -72,8 +80,9 @@ class _GroupsScreenState extends State<GroupsScreen>
 
 class _GroupsAppBar extends StatelessWidget {
   final VoidCallback? onNotifications;
+  final VoidCallback? onProfileTap;
 
-  const _GroupsAppBar({this.onNotifications});
+  const _GroupsAppBar({this.onNotifications, this.onProfileTap});
 
   @override
   Widget build(BuildContext context) {
@@ -82,11 +91,13 @@ class _GroupsAppBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFFE8D5F5),
-            child: const Icon(Icons.person,
-                color: Color(0xFF3F2868), size: 22),
+          GestureDetector(
+            onTap: onProfileTap,
+            child: const CircleAvatar(
+              radius: 20,
+              backgroundColor: Color(0xFFE8D5F5),
+              child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+            ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
