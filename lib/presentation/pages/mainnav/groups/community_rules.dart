@@ -44,42 +44,46 @@ class CommunityRules extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _CommunityRulesAppBar(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Row(
                 children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: Color(0xFF1A1A1A)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
                   const Text(
                     'Community Rules',
                     style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF1A1A1A),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  RichText(
-                    text: const TextSpan(
-                      style: TextStyle(
-                          fontSize: 13,
-                          color: Color(0xFF9E9E9E),
-                          height: 1.5),
-                      children: [
-                        TextSpan(
-                            text:
-                                'Community rules are enforced by community leaders, and are in addition to '),
-                        TextSpan(
-                          text: 'our Rules.',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
-                      ],
-                    ),
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A)),
                   ),
                 ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+              child: RichText(
+                text: const TextSpan(
+                  style: TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF9E9E9E),
+                      height: 1.5),
+                  children: [
+                    TextSpan(
+                        text:
+                            'Community rules are enforced by community leaders, and are in addition to '),
+                    TextSpan(
+                      text: 'our Rules.',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A)),
+                    ),
+                  ],
+                ),
               ),
             ),
             Expanded(
@@ -97,7 +101,8 @@ class CommunityRules extends StatelessWidget {
                         height: 28,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFE0E0E0)),
+                          border:
+                              Border.all(color: const Color(0xFFE0E0E0)),
                         ),
                         child: Center(
                           child: Text(
@@ -117,19 +122,17 @@ class CommunityRules extends StatelessWidget {
                             Text(
                               rule['title']!,
                               style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1A1A1A),
-                              ),
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF1A1A1A)),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               rule['body']!,
                               style: const TextStyle(
-                                fontSize: 13,
-                                color: Color(0xFF555555),
-                                height: 1.5,
-                              ),
+                                  fontSize: 13,
+                                  color: Color(0xFF555555),
+                                  height: 1.5),
                             ),
                           ],
                         ),
@@ -153,76 +156,21 @@ class CommunityRules extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F2868),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                        borderRadius: BorderRadius.circular(30)),
                     elevation: 0,
                   ),
                   child: const Text(
                     'Got It',
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white),
                   ),
                 ),
               ),
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _CommunityRulesAppBar extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFFE8D5F5),
-            child: const Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
-          ),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Image.asset('assets/logo3.png', height: 28, width: 28),
-              const SizedBox(width: 8),
-              RichText(
-                text: const TextSpan(
-                  children: [
-                    TextSpan(
-                      text: 'Mummy',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF3F2868),
-                      ),
-                    ),
-                    TextSpan(
-                      text: 'map',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF00BCD4),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: Color(0xFF1A1A1A)),
-            onPressed: () {},
-          ),
-        ],
       ),
     );
   }

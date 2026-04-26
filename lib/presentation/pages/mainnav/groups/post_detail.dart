@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
-//import 'package:mummymap/presentation/pages/mainnav/groups/create_post.dart';
+import 'package:mummymap/presentation/pages/mainnav/groups/create_post.dart';
 
 class PostDetail extends ConsumerStatefulWidget {
   final GroupPost post;
@@ -14,10 +14,7 @@ class PostDetail extends ConsumerStatefulWidget {
 }
 
 class _PostDetailState extends ConsumerState<PostDetail> {
-  bool _bookmarked = false;
-  bool _liked = false;
   final _replyController = TextEditingController();
-  final List<Map<String, String>> _localReplies = [];
 
   @override
   void dispose() {
@@ -28,92 +25,298 @@ class _PostDetailState extends ConsumerState<PostDetail> {
   void _submitReply() {
     final text = _replyController.text.trim();
     if (text.isEmpty) return;
-    setState(() {
-      _localReplies.add({
-        'name': 'You',
-        'initials': 'ME',
-        'time': 'Just now',
-        'body': text,
-      });
-      _replyController.clear();
-    });
+    ref.read(groupsProvider.notifier).addReply(widget.post.id, text);
+    _replyController.clear();
     FocusScope.of(context).unfocus();
+  }
+
+  void _showPostOptions(GroupPost post) {
+    final isBookmarked =
+        ref.read(groupsProvider).isBookmarked(post.id);
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: Icon(isBookmarked
+                  ? Icons.bookmark
+                  : Icons.bookmark_outline),
+              title: Text(
+                  isBookmarked ? 'Remove bookmark' : 'Save post'),
+              onTap: () {
+                ref
+                    .read(groupsProvider.notifier)
+                    .toggleBookmark(post.id);
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(isBookmarked
+                        ? 'Bookmark removed'
+                        : 'Post bookmarked'),
+                    duration: const Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: const Text('Copy post text'),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: post.title));
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Copied to clipboard'),
+                    duration: Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading:
+                  const Icon(Icons.flag_outlined, color: Colors.red),
+              title: const Text('Report post',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final livePost = ref.watch(groupsProvider).posts.firstWhere(
-          (p) => p.id == widget.post.id,
-          orElse: () => widget.post,
-        );
+    final state = ref.watch(groupsProvider);
+    final livePost = state.posts.firstWhere(
+      (p) => p.id == widget.post.id,
+      orElse: () => widget.post,
+    );
+    final isBookmarked = state.isBookmarked(livePost.id);
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
-            _buildAppBar(context),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 4, vertical: 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: Color(0xFF1A1A1A)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Text('Post',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A1A1A))),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.more_horiz,
+                        color: Color(0xFF1A1A1A)),
+                    onPressed: () => _showPostOptions(livePost),
+                  ),
+                ],
+              ),
+            ),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildPostHeader(livePost),
-                    const SizedBox(height: 16),
-                    Text(
-                      livePost.title,
-                      style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A)),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor:
+                              Color(livePost.groupColor),
+                          child: Text(livePost.groupInitials,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14)),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              RichText(
+                                text: TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: livePost.author,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF1A1A1A)),
+                                    ),
+                                    TextSpan(
+                                      text:
+                                          ' in ${livePost.group}',
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: Color(0xFF9E9E9E)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Text(livePost.timeAgo,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade500)),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 16),
+                    Text(livePost.title,
+                        style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1A1A1A))),
                     if (livePost.body.isNotEmpty) ...[
                       const SizedBox(height: 12),
-                      Text(
-                        livePost.body,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            color: Color(0xFF333333),
-                            height: 1.7),
-                      ),
+                      Text(livePost.body,
+                          style: const TextStyle(
+                              fontSize: 15,
+                              color: Color(0xFF333333),
+                              height: 1.7)),
                     ],
                     const SizedBox(height: 16),
-                    Text(
-                      '8:12 PM  •  03 Apr 25  •  12.4M Views',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade500),
+                    const Divider(height: 28),
+                    Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+                        _ActionButton(
+                          icon: livePost.isLikedByMe
+                              ? Icons.favorite
+                              : Icons.favorite_outline,
+                          label: '${livePost.likes}',
+                          color: livePost.isLikedByMe
+                              ? Colors.red
+                              : Colors.grey.shade600,
+                          onTap: () => ref
+                              .read(groupsProvider.notifier)
+                              .toggleLike(livePost.id),
+                        ),
+                        _ActionButton(
+                          icon: Icons.chat_bubble_outline,
+                          label:
+                              '${livePost.postReplies.length}',
+                          color: Colors.grey.shade600,
+                          onTap: () {},
+                        ),
+                        _ActionButton(
+                          icon: isBookmarked
+                              ? Icons.bookmark
+                              : Icons.bookmark_outline,
+                          label: '',
+                          color: isBookmarked
+                              ? const Color(0xFF3F2868)
+                              : Colors.grey.shade600,
+                          onTap: () {
+                            ref
+                                .read(groupsProvider.notifier)
+                                .toggleBookmark(livePost.id);
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(
+                              SnackBar(
+                                content: Text(isBookmarked
+                                    ? 'Bookmark removed'
+                                    : 'Post bookmarked'),
+                                duration:
+                                    const Duration(seconds: 1),
+                                behavior:
+                                    SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                        ),
+                        _ActionButton(
+                          icon: Icons.share_outlined,
+                          label: '',
+                          color: Colors.grey.shade600,
+                          onTap: () {
+                            Clipboard.setData(ClipboardData(
+                                text: livePost.title));
+                            ScaffoldMessenger.of(context)
+                                .showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Copied to clipboard'),
+                                duration: Duration(seconds: 1),
+                                behavior:
+                                    SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ),
                     const Divider(height: 28),
-                    _buildActionRow(context, livePost),
-                    const Divider(height: 28),
-                    _buildRepliesHeader(),
+                    Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Replies (${livePost.postReplies.length})',
+                          style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1A1A1A)),
+                        ),
+                        Icon(Icons.keyboard_arrow_down,
+                            color: Colors.grey.shade500),
+                      ],
+                    ),
                     const SizedBox(height: 16),
-                    if (_localReplies.isEmpty && true)
-                      _ReplyItem(
-                        initials: 'SH',
-                        color: const Color(0xFF4FC3F7),
-                        name: 'Sharon',
-                        time: '12hrs',
-                        replyingTo:
-                            '@${livePost.author} in ${livePost.group}',
-                        body:
-                            'Just reading your post I realized that I also went through the exact same thing when I gave birth to my first child and daughter Adaeze. It was hell trying to get her to be calm. It still remains a challenge but it gets better!',
-                      ),
-                    ..._localReplies.map(
-                      (reply) => Padding(
-                        padding: const EdgeInsets.only(bottom: 20),
-                        child: _ReplyItem(
-                          initials: reply['initials']!,
-                          color: const Color(0xFF3F2868),
-                          name: reply['name']!,
-                          time: reply['time']!,
+                    if (livePost.postReplies.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.symmetric(vertical: 32),
+                          child: Text(
+                            'No replies yet. Be the first!',
+                            style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey.shade400),
+                          ),
+                        ),
+                      )
+                    else
+                      ...livePost.postReplies.map(
+                        (reply) => _ReplyItem(
+                          reply: reply,
+                          postId: livePost.id,
                           replyingTo:
                               '@${livePost.author} in ${livePost.group}',
-                          body: reply['body']!,
                         ),
                       ),
-                    ),
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -123,178 +326,6 @@ class _PostDetailState extends ConsumerState<PostDetail> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Text(
-            'Post',
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1A1A1A)),
-          ),
-          const Spacer(),
-          IconButton(
-            icon: const Icon(Icons.more_horiz, color: Color(0xFF1A1A1A)),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPostHeader(GroupPost post) {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: Color(post.groupColor),
-          child: Text(
-            post.groupInitials,
-            style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: post.author,
-                      style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1A1A1A)),
-                    ),
-                    TextSpan(
-                      text: ' in ${post.group}',
-                      style: const TextStyle(
-                          fontSize: 13, color: Color(0xFF9E9E9E)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                post.time,
-                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
-              ),
-            ],
-          ),
-        ),
-        GestureDetector(
-          onTap: () {},
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-            decoration: BoxDecoration(
-              border: Border.all(color: const Color(0xFF3F2868), width: 1.5),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              children: [
-                Text('Join',
-                    style: TextStyle(
-                        color: Color(0xFF3F2868),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13)),
-                SizedBox(width: 4),
-                Icon(Icons.add, color: Color(0xFF3F2868), size: 15),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionRow(BuildContext context, GroupPost post) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _ActionButton(
-          icon: _liked ? Icons.favorite : Icons.favorite_outline,
-          label: _liked ? '${post.likes + 1}' : '${post.likes}',
-          color: _liked ? Colors.red : Colors.grey.shade600,
-          onTap: () {
-            setState(() => _liked = !_liked);
-            if (_liked) {
-              ref.read(groupsProvider.notifier).likePost(post.id);
-            }
-          },
-        ),
-        _ActionButton(
-          icon: Icons.chat_bubble_outline,
-          label: '${post.replies}k',
-          color: Colors.grey.shade600,
-          onTap: () => FocusScope.of(context)
-              .requestFocus(FocusNode()),
-        ),
-        _ActionButton(
-          icon: _bookmarked ? Icons.bookmark : Icons.bookmark_outline,
-          label: '6,242',
-          color: _bookmarked
-              ? const Color(0xFF3F2868)
-              : Colors.grey.shade600,
-          onTap: () {
-            setState(() => _bookmarked = !_bookmarked);
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                    _bookmarked ? 'Post bookmarked' : 'Bookmark removed'),
-                duration: const Duration(seconds: 1),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
-        ),
-        _ActionButton(
-          icon: Icons.share_outlined,
-          label: '10.4k',
-          color: Colors.grey.shade600,
-          onTap: () {
-            Clipboard.setData(ClipboardData(text: post.title));
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Link copied to clipboard'),
-                duration: Duration(seconds: 1),
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRepliesHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        const Text(
-          'Most relevant replies',
-          style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1A1A1A)),
-        ),
-        Icon(Icons.keyboard_arrow_down, color: Colors.grey.shade500),
-      ],
     );
   }
 
@@ -323,7 +354,8 @@ class _PostDetailState extends ConsumerState<PostDetail> {
           const CircleAvatar(
             radius: 18,
             backgroundColor: Color(0xFFE8D5F5),
-            child: Icon(Icons.person, color: Color(0xFF3F2868), size: 18),
+            child: Icon(Icons.person,
+                color: Color(0xFF3F2868), size: 18),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -332,8 +364,8 @@ class _PostDetailState extends ConsumerState<PostDetail> {
               onChanged: (_) => setState(() {}),
               decoration: InputDecoration(
                 hintText: 'Add a reply...',
-                hintStyle:
-                    TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                hintStyle: TextStyle(
+                    color: Colors.grey.shade400, fontSize: 14),
                 filled: true,
                 fillColor: const Color(0xFFF5F5F5),
                 contentPadding: const EdgeInsets.symmetric(
@@ -360,7 +392,8 @@ class _PostDetailState extends ConsumerState<PostDetail> {
                     ? const Color(0xFF3F2868)
                     : Colors.grey.shade300,
               ),
-              child: const Icon(Icons.send, color: Colors.white, size: 18),
+              child: const Icon(Icons.send,
+                  color: Colors.white, size: 18),
             ),
           ),
         ],
@@ -387,18 +420,19 @@ class _ActionButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
         child: Row(
           children: [
             Icon(icon, size: 24, color: color),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                  fontSize: 14,
-                  color: color,
-                  fontWeight: FontWeight.w500),
-            ),
+            if (label.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 14,
+                      color: color,
+                      fontWeight: FontWeight.w500)),
+            ],
           ],
         ),
       ),
@@ -406,25 +440,62 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
-class _ReplyItem extends StatelessWidget {
-  final String initials;
-  final Color color;
-  final String name;
-  final String time;
+class _ReplyItem extends ConsumerWidget {
+  final PostReply reply;
+  final String postId;
   final String replyingTo;
-  final String body;
 
   const _ReplyItem({
-    required this.initials,
-    required this.color,
-    required this.name,
-    required this.time,
+    required this.reply,
+    required this.postId,
     required this.replyingTo,
-    required this.body,
   });
 
+  void _showReplyOptions(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: const Text('Copy reply'),
+              onTap: () {
+                Clipboard.setData(
+                    ClipboardData(text: reply.body));
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.flag_outlined,
+                  color: Colors.red),
+              title: const Text('Report reply',
+                  style: TextStyle(color: Colors.red)),
+              onTap: () => Navigator.pop(context),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isLiked = reply.likedBy.contains('me');
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Row(
@@ -432,8 +503,8 @@ class _ReplyItem extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: color,
-            child: Text(initials,
+            backgroundColor: Color(reply.avatarColor),
+            child: Text(reply.initials,
                 style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -445,55 +516,81 @@ class _ReplyItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        Text(name,
+                        Text(reply.author,
                             style: const TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                                 color: Color(0xFF1A1A1A))),
                         const SizedBox(width: 6),
-                        Text('• $time',
+                        Text('• ${reply.timeAgo}',
                             style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.grey.shade500)),
                       ],
                     ),
-                    Icon(Icons.more_horiz, color: Colors.grey.shade400),
+                    GestureDetector(
+                      onTap: () =>
+                          _showReplyOptions(context, ref),
+                      child: Icon(Icons.more_horiz,
+                          color: Colors.grey.shade400),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  'Replying to $replyingTo',
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF3F2868)),
-                ),
+                Text('Replying to $replyingTo',
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF3F2868))),
                 const SizedBox(height: 6),
-                Text(
-                  body,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFF333333),
-                      height: 1.6),
-                ),
+                Text(reply.body,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF333333),
+                        height: 1.6)),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    Icon(Icons.favorite_outline,
-                        size: 16, color: Colors.grey.shade400),
-                    const SizedBox(width: 4),
-                    Text('Like',
-                        style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade500)),
+                    GestureDetector(
+                      onTap: () => ref
+                          .read(groupsProvider.notifier)
+                          .toggleLikeReply(postId, reply.id),
+                      child: Row(
+                        children: [
+                          Icon(
+                            isLiked
+                                ? Icons.favorite
+                                : Icons.favorite_outline,
+                            size: 16,
+                            color: isLiked
+                                ? Colors.red
+                                : Colors.grey.shade400,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isLiked
+                                ? '${reply.likedBy.length}'
+                                : 'Like',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: isLiked
+                                    ? Colors.red
+                                    : Colors.grey.shade500),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 16),
                     Icon(Icons.chat_bubble_outline,
                         size: 16, color: Colors.grey.shade400),
                     const SizedBox(width: 4),
                     Text('Reply',
                         style: TextStyle(
-                            fontSize: 12, color: Colors.grey.shade500)),
+                            fontSize: 12,
+                            color: Colors.grey.shade500)),
                   ],
                 ),
               ],

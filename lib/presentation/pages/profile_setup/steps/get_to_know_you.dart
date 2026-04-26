@@ -5,7 +5,6 @@ import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_text_fie
 import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_dropdown.dart';
 import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
 
-
 class GetToKnowYou extends ConsumerStatefulWidget {
   final VoidCallback onComplete;
 
@@ -43,7 +42,6 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
         await ref.read(pregnancyProvider.notifier).savePregnancy(
               method: _basedOn!,
               date: _selectedDate!,
-              calculator: ref.read(calculateDueDateUseCaseProvider),
             );
       }
       widget.onComplete();
@@ -103,8 +101,10 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
           dobController: _dobController,
           firstTimeMum: _firstTimeMum,
           bloodGroup: _bloodGroup,
-          onFirstTimeMumChanged: (val) => setState(() => _firstTimeMum = val),
-          onBloodGroupChanged: (val) => setState(() => _bloodGroup = val),
+          onFirstTimeMumChanged: (val) =>
+              setState(() => _firstTimeMum = val),
+          onBloodGroupChanged: (val) =>
+              setState(() => _bloodGroup = val),
           onPickDob: _pickDob,
           onContinue: _nextSub,
         ),
@@ -192,7 +192,9 @@ class _PersonalInfo extends StatelessWidget {
           SetupDropdown(
             value: bloodGroup,
             hintText: 'Blood Group',
-            items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
+            items: const [
+              'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
+            ],
             onChanged: onBloodGroupChanged,
           ),
           const Spacer(),
@@ -310,7 +312,8 @@ class _DueDate extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               _helperText,
-              style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+              style: const TextStyle(
+                  fontSize: 12, color: Color(0xFF9E9E9E)),
             ),
           ],
           const Spacer(),

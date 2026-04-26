@@ -1,0 +1,321 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/providers/groups_provider.dart';
+
+class CreateGroup extends ConsumerStatefulWidget {
+  const CreateGroup({super.key});
+
+  @override
+  ConsumerState<CreateGroup> createState() => _CreateGroupState();
+}
+
+class _CreateGroupState extends ConsumerState<CreateGroup> {
+  final _nameController = TextEditingController();
+  final _descriptionController = TextEditingController();
+  bool _isPublic = true;
+  int _selectedColor = 0xFF3F2868;
+  bool _isLoading = false;
+
+  final List<int> _colors = [
+    0xFF3F2868,
+    0xFFE57373,
+    0xFF4FC3F7,
+    0xFF81C784,
+    0xFFFFB74D,
+    0xFFBA68C8,
+    0xFF4DD0E1,
+    0xFFFF8A65,
+  ];
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  bool get _isValid =>
+      _nameController.text.trim().isNotEmpty &&
+      _descriptionController.text.trim().isNotEmpty;
+
+  Future<void> _createGroup() async {
+    if (!_isValid) return;
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(milliseconds: 800));
+    ref.read(groupsProvider.notifier).createGroup(
+          name: _nameController.text.trim(),
+          description: _descriptionController.text.trim(),
+          isPublic: _isPublic,
+          avatarColor: _selectedColor,
+        );
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back,
+                        color: Color(0xFF1A1A1A)),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Text(
+                    'Create Group',
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1A1A1A)),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              color: Color(_selectedColor),
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: Center(
+                              child: Text(
+                                _nameController.text.trim().isEmpty
+                                    ? 'G'
+                                    : _nameController.text
+                                        .trim()
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 36,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text('Pick a color',
+                              style: TextStyle(
+                                  fontSize: 13, color: Color(0xFF9E9E9E))),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 10,
+                            children: _colors.map((color) {
+                              final isSelected = _selectedColor == color;
+                              return GestureDetector(
+                                onTap: () =>
+                                    setState(() => _selectedColor = color),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: Color(color),
+                                    shape: BoxShape.circle,
+                                    border: isSelected
+                                        ? Border.all(
+                                            color: Colors.black,
+                                            width: 2.5)
+                                        : null,
+                                  ),
+                                  child: isSelected
+                                      ? const Icon(Icons.check,
+                                          color: Colors.white, size: 16)
+                                      : null,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    const Text('Group Name',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A))),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _nameController,
+                      onChanged: (_) => setState(() {}),
+                      decoration: _inputDecoration('e.g. November Moms 2025'),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Description',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A))),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _descriptionController,
+                      maxLines: 3,
+                      onChanged: (_) => setState(() {}),
+                      decoration: _inputDecoration(
+                          'What is this group about?'),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Privacy',
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A))),
+                    const SizedBox(height: 8),
+                    _PrivacyOption(
+                      icon: Icons.public,
+                      title: 'Public',
+                      subtitle: 'Anyone can find and join this group',
+                      selected: _isPublic,
+                      onTap: () => setState(() => _isPublic = true),
+                    ),
+                    const SizedBox(height: 8),
+                    _PrivacyOption(
+                      icon: Icons.lock_outline,
+                      title: 'Private',
+                      subtitle: 'Only people you invite can join',
+                      selected: !_isPublic,
+                      onTap: () => setState(() => _isPublic = false),
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton(
+                        onPressed: _isValid && !_isLoading
+                            ? _createGroup
+                            : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF3F2868),
+                          disabledBackgroundColor:
+                              const Color(0xFFBDBDBD),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(30)),
+                          elevation: 0,
+                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text('Create Group',
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _inputDecoration(String hint) {
+    return InputDecoration(
+      hintText: hint,
+      hintStyle:
+          const TextStyle(color: Color(0xFFBDBDBD), fontSize: 14),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide:
+            const BorderSide(color: Color(0xFF3F2868), width: 1.5),
+      ),
+    );
+  }
+}
+
+class _PrivacyOption extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PrivacyOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: selected
+              ? const Color(0xFFE8D5F5)
+              : const Color(0xFFF9F9F9),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: selected
+                ? const Color(0xFF3F2868)
+                : const Color(0xFFE0E0E0),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon,
+                color: selected
+                    ? const Color(0xFF3F2868)
+                    : const Color(0xFF9E9E9E)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                          color: selected
+                              ? const Color(0xFF3F2868)
+                              : const Color(0xFF1A1A1A))),
+                  Text(subtitle,
+                      style: const TextStyle(
+                          fontSize: 12, color: Color(0xFF9E9E9E))),
+                ],
+              ),
+            ),
+            if (selected)
+              const Icon(Icons.check_circle,
+                  color: Color(0xFF3F2868), size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}

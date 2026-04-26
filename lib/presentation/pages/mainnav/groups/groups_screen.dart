@@ -4,7 +4,9 @@ import 'package:mummymap/presentation/pages/mainnav/groups/tabs/explore_tab.dart
 import 'package:mummymap/presentation/pages/mainnav/groups/tabs/groups_tab.dart';
 
 class GroupsScreen extends StatefulWidget {
-  const GroupsScreen({super.key});
+  final VoidCallback? onNotifications;
+
+  const GroupsScreen({super.key, this.onNotifications});
 
   @override
   State<GroupsScreen> createState() => _GroupsScreenState();
@@ -17,7 +19,7 @@ class _GroupsScreenState extends State<GroupsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: 1);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: 0);
   }
 
   @override
@@ -26,9 +28,7 @@ class _GroupsScreenState extends State<GroupsScreen>
     super.dispose();
   }
 
-  void _goToExplore() {
-    _tabController.animateTo(1);
-  }
+  void _goToExplore() => _tabController.animateTo(1);
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class _GroupsScreenState extends State<GroupsScreen>
       body: SafeArea(
         child: Column(
           children: [
-            _GroupsAppBar(),
+            _GroupsAppBar(onNotifications: widget.onNotifications),
             TabBar(
               controller: _tabController,
               labelColor: const Color(0xFF3F2868),
@@ -71,6 +71,10 @@ class _GroupsScreenState extends State<GroupsScreen>
 }
 
 class _GroupsAppBar extends StatelessWidget {
+  final VoidCallback? onNotifications;
+
+  const _GroupsAppBar({this.onNotifications});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -81,8 +85,8 @@ class _GroupsAppBar extends StatelessWidget {
           CircleAvatar(
             radius: 20,
             backgroundColor: const Color(0xFFE8D5F5),
-            child:
-                const Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+            child: const Icon(Icons.person,
+                color: Color(0xFF3F2868), size: 22),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -114,7 +118,7 @@ class _GroupsAppBar extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined,
                 color: Color(0xFF1A1A1A)),
-            onPressed: () {},
+            onPressed: onNotifications,
           ),
         ],
       ),

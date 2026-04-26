@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:mummymap/presentation/pages/mainnav/home/home_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/groups_screen.dart';
+import 'package:mummymap/presentation/pages/mainnav/notifications_screen.dart';
+
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -13,13 +15,23 @@ class _MainNavState extends State<MainNav> {
   int _currentIndex = 0;
   late final List<Widget> _pages;
 
+  void _openNotifications() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
     _pages = [
-      HomeScreen(onExploreGroups: () => setState(() => _currentIndex = 2)),
+      HomeScreen(
+        onExploreGroups: () => setState(() => _currentIndex = 2),
+        onNotifications: _openNotifications,
+      ),
       const Scaffold(body: Center(child: Text('Track'))),
-      const GroupsScreen(),
+      GroupsScreen(onNotifications: _openNotifications),
       const Scaffold(body: Center(child: Text('Calendar'))),
       const Scaffold(body: Center(child: Text('Shop'))),
     ];

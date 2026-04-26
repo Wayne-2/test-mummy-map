@@ -19,39 +19,50 @@ class ForYouTab extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.dynamic_feed_outlined,
-                  size: 60, color: Color(0xFFBDBDBD)),
-              const SizedBox(height: 16),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8D5F5),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Icon(Icons.dynamic_feed_outlined,
+                    size: 40, color: Color(0xFF3F2868)),
+              ),
+              const SizedBox(height: 20),
               const Text(
-                'Nothing here yet',
+                'Your feed is empty',
                 style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF1A1A1A)),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Join groups to see posts from communities you care about',
+                'Join or create groups to see posts from communities you care about',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                style: TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF9E9E9E),
+                    height: 1.5),
               ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: onExplore,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF3F2868),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 32, vertical: 14),
-                ),
-                child: const Text(
-                  'Explore Groups',
-                  style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: onExplore,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3F2868),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Explore Groups',
+                      style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white)),
                 ),
               ),
             ],

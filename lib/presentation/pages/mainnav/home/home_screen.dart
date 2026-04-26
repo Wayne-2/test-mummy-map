@@ -9,8 +9,9 @@ import 'package:mummymap/presentation/pages/mainnav/home/widgets/community_space
 
 class HomeScreen extends ConsumerWidget {
   final VoidCallback? onExploreGroups;
+  final VoidCallback? onNotifications;
 
-  const HomeScreen({super.key, this.onExploreGroups});
+  const HomeScreen({super.key, this.onExploreGroups, this.onNotifications});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +20,7 @@ class HomeScreen extends ConsumerWidget {
       body: SafeArea(
         child: Column(
           children: [
-            _HomeAppBar(),
+            _HomeAppBar(onNotifications: onNotifications),
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 24),
@@ -49,6 +50,10 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _HomeAppBar extends StatelessWidget {
+  final VoidCallback? onNotifications;
+
+  const _HomeAppBar({this.onNotifications});
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -93,7 +98,7 @@ class _HomeAppBar extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined,
                 color: Color(0xFF1A1A1A)),
-            onPressed: () {},
+            onPressed: onNotifications,
           ),
         ],
       ),
