@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mummymap/presentation/pages/mainnav/side/articles/pregnancy_library.dart';
 import 'package:mummymap/presentation/pages/mainnav/side/doctors/doctors_screen.dart';
+import 'package:mummymap/presentation/pages/mainnav/side/settings_screen.dart';
 
 class ProfileMenu extends StatefulWidget {
   final VoidCallback onClose;
@@ -210,12 +211,8 @@ class _ProfileMenuState extends State<ProfileMenu>
                             await _controller.reverse();
                             widget.onClose();
                             if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Settings coming soon'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
+                               Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen
+                               ()));
                             }
                           },
                         ),
