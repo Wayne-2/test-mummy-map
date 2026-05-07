@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
 import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
 
@@ -10,7 +11,7 @@ class SignUp extends StatefulWidget {
 }
 
 class _SignUpState extends State<SignUp> {
-  final _formKey = GlobalKey<FormState>(); 
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
@@ -25,10 +26,15 @@ class _SignUpState extends State<SignUp> {
   }
 
   Future<void> _handleSignUp() async {
-    if (!_formKey.currentState!.validate()) return; 
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', true);
 
     if (!mounted) return;
 
@@ -81,7 +87,7 @@ class _SignUpState extends State<SignUp> {
                   ),
                 ],
               ),
-              child: Form( 
+              child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -102,7 +108,6 @@ class _SignUpState extends State<SignUp> {
                       style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
                     ),
                     const SizedBox(height: 32),
-
                     _AuthTextField(
                       controller: _emailController,
                       hintText: 'Email',
@@ -120,9 +125,7 @@ class _SignUpState extends State<SignUp> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 16),
-
                     _AuthTextField(
                       controller: _passwordController,
                       hintText: 'Password',
@@ -156,9 +159,7 @@ class _SignUpState extends State<SignUp> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 28),
-
                     SizedBox(
                       width: double.infinity,
                       height: 52,
@@ -203,9 +204,7 @@ class _SignUpState extends State<SignUp> {
                               ),
                       ),
                     ),
-
                     const SizedBox(height: 28),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -249,7 +248,7 @@ class _AuthTextField extends StatelessWidget {
   final bool obscureText;
   final TextInputType keyboardType;
   final Widget? suffixIcon;
-  final String? Function(String?)? validator; 
+  final String? Function(String?)? validator;
 
   const _AuthTextField({
     required this.controller,
@@ -262,11 +261,11 @@ class _AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField( 
+    return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      validator: validator, 
+      validator: validator,
       style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A1A)),
       decoration: InputDecoration(
         hintText: hintText,
@@ -281,6 +280,14 @@ class _AuthTextField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFF3F2868), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
       ),
     );

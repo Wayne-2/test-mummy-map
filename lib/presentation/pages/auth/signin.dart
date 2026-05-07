@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/pages/auth/forgot_password.dart';
 import 'package:mummymap/presentation/pages/auth/signup.dart';
+import 'package:mummymap/presentation/pages/mainnav/main_nav.dart';
+import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
 
 class SignIn extends StatefulWidget {
   const SignIn({super.key});
@@ -10,12 +13,13 @@ class SignIn extends StatefulWidget {
 }
 
 class _SignInState extends State<SignIn> {
-  final _formKey = GlobalKey<FormState>(); 
+  final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,15 +28,40 @@ class _SignInState extends State<SignIn> {
     super.dispose();
   }
 
-  void _handleSignIn() {
-    if (!_formKey.currentState!.validate()) return; 
-    // TODO: connect backend later
+  Future<void> _handleSignIn() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', true);
+
+    final hasCompletedSetup = prefs.getBool('has_completed_setup') ?? false;
+
+    if (!mounted) return;
+
+    setState(() => _isLoading = false);
+
+    if (hasCompletedSetup) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const MainNav()),
+      );
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const ProfileSetup()),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final bottomPadding =MediaQuery.of(context).padding.bottom;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       body: Stack(
@@ -47,7 +76,6 @@ class _SignInState extends State<SignIn> {
               ),
             ),
           ),
-
           Positioned(
             bottom: 190,
             left: 16,
@@ -71,7 +99,7 @@ class _SignInState extends State<SignIn> {
                   ),
                 ],
               ),
-              child: Form( 
+              child: Form(
                 key: _formKey,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -92,7 +120,6 @@ class _SignInState extends State<SignIn> {
                       style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
                     ),
                     const SizedBox(height: 32),
-
                     _AuthTextField(
                       controller: _emailController,
                       hintText: 'Email',
@@ -107,9 +134,7 @@ class _SignInState extends State<SignIn> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 16),
-
                     _AuthTextField(
                       controller: _passwordController,
                       hintText: 'Password',
@@ -137,9 +162,7 @@ class _SignInState extends State<SignIn> {
                         return null;
                       },
                     ),
-
                     const SizedBox(height: 12),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -158,7 +181,8 @@ class _SignInState extends State<SignIn> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(4),
                                 ),
-                                side: const BorderSide(color: Color(0xFFBDBDBD)),
+                                side: const BorderSide(
+                                    color: Color(0xFFBDBDBD)),
                                 activeColor: const Color(0xFF3F2868),
                               ),
                             ),
@@ -170,12 +194,13 @@ class _SignInState extends State<SignIn> {
                           ],
                         ),
                         GestureDetector(
-                          onTap: () {Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ForgotPassword(),
-                            ),
-                          );
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ForgotPassword(),
+                              ),
+                            );
                           },
                           child: const Text(
                             'Forgot Password?',
@@ -188,34 +213,51 @@ class _SignInState extends State<SignIn> {
                         ),
                       ],
                     ),
-
                     const SizedBox(height: 28),
-
                     SizedBox(
                       width: double.infinity,
                       height: 52,
                       child: ElevatedButton(
-                        onPressed: _handleSignIn, // ✅ fixed
+                        onPressed: _isLoading ? null : _handleSignIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF3F2868),
+                          disabledBackgroundColor: const Color(0xFF3F2868),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(30),
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Sign In',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  SizedBox(width: 10),
+                                  Text(
+                                    'Signing In...',
+                                    style: TextStyle(
+                                        fontSize: 16, color: Colors.white),
+                                  ),
+                                ],
+                              )
+                            : const Text(
+                                'Sign In',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
                       ),
                     ),
-
                     const SizedBox(height: 28),
-
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -259,7 +301,7 @@ class _AuthTextField extends StatelessWidget {
   final bool obscureText;
   final TextInputType keyboardType;
   final Widget? suffixIcon;
-  final String? Function(String?)? validator; // ✅ added
+  final String? Function(String?)? validator;
 
   const _AuthTextField({
     required this.controller,
@@ -272,7 +314,7 @@ class _AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField( 
+    return TextFormField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
@@ -292,6 +334,14 @@ class _AuthTextField extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           borderSide:
               const BorderSide(color: Color(0xFF3F2868), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Colors.red, width: 1.5),
         ),
       ),
     );

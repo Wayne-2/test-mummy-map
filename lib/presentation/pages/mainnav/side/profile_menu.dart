@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mummymap/presentation/providers/settings_provider.dart';
+import 'package:mummymap/presentation/pages/auth/signin.dart';
 import 'package:mummymap/presentation/pages/mainnav/side/articles/pregnancy_library.dart';
 import 'package:mummymap/presentation/pages/mainnav/side/doctors/doctors_screen.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/settings_screen.dart';
+import 'package:mummymap/presentation/pages/mainnav/side/settings/settings_screen.dart';
 
-class ProfileMenu extends StatefulWidget {
+class ProfileMenu extends ConsumerStatefulWidget {
   final VoidCallback onClose;
   final String? activePage;
 
@@ -14,10 +18,10 @@ class ProfileMenu extends StatefulWidget {
   });
 
   @override
-  State<ProfileMenu> createState() => _ProfileMenuState();
+  ConsumerState<ProfileMenu> createState() => _ProfileMenuState();
 }
 
-class _ProfileMenuState extends State<ProfileMenu>
+class _ProfileMenuState extends ConsumerState<ProfileMenu>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
@@ -49,8 +53,22 @@ class _ProfileMenuState extends State<ProfileMenu>
     widget.onClose();
   }
 
+  Future<void> _logout() async {
+    await _controller.reverse();
+    widget.onClose();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_logged_in', false);
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const SignIn()),
+      (_) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final settings = ref.watch(settingsProvider);
+
     return GestureDetector(
       onTap: _close,
       child: FadeTransition(
@@ -128,23 +146,27 @@ class _ProfileMenuState extends State<ProfileMenu>
                                   child: Column(
                                     crossAxisAlignment:
                                         CrossAxisAlignment.start,
-                                    children: const [
+                                    children: [
                                       Text(
-                                        'Kelly Kirkland',
-                                        style: TextStyle(
+                                        settings.fullName,
+                                        style: const TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 15,
                                           color: Color(0xFF1A1A1A),
                                         ),
                                       ),
-                                      SizedBox(height: 2),
-                                      Text(
-                                        'kellykirland@gmail.com',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Color(0xFF9E9E9E),
+                                      if (settings.email.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          settings.email,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: Color(0xFF9E9E9E),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                      ),
+                                      ],
                                     ],
                                   ),
                                 ),
@@ -182,7 +204,12 @@ class _ProfileMenuState extends State<ProfileMenu>
                             await _controller.reverse();
                             widget.onClose();
                             if (context.mounted) {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const DoctorsScreen()));
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const DoctorsScreen(),
+                                ),
+                              );
                             }
                           },
                         ),
@@ -211,16 +238,21 @@ class _ProfileMenuState extends State<ProfileMenu>
                             await _controller.reverse();
                             widget.onClose();
                             if (context.mounted) {
-                               Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen
-                               ()));
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen(),
+                                ),
+                              );
                             }
                           },
                         ),
                         const Spacer(),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                          padding:
+                              const EdgeInsets.fromLTRB(20, 0, 20, 32),
                           child: GestureDetector(
-                            onTap: _close,
+                            onTap: _logout,
                             child: Row(
                               children: [
                                 Container(
@@ -228,7 +260,8 @@ class _ProfileMenuState extends State<ProfileMenu>
                                   height: 36,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFFEEEE),
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius:
+                                        BorderRadius.circular(10),
                                   ),
                                   child: const Icon(
                                     Icons.logout,

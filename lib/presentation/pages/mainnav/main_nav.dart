@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mummymap/presentation/pages/mainnav/home/home_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/groups_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/notifications_screen.dart';
+import 'package:mummymap/presentation/pages/mainnav/shop/shop_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/side/profile_menu.dart';
 
 class MainNav extends StatefulWidget {
@@ -36,12 +37,17 @@ class _MainNavState extends State<MainNav> {
         onProfileTap: _openMenu,
       ),
       const Scaffold(body: Center(child: Text('Track'))),
+
       GroupsScreen(
         onNotifications: _openNotifications,
         onProfileTap: _openMenu,
       ),
       const Scaffold(body: Center(child: Text('Calendar'))),
-      const Scaffold(body: Center(child: Text('Shop'))),
+
+      ShopScreen(
+        onNotifications: _openNotifications,
+        onProfileTap: _openMenu,
+      ),
     ];
   }
 
