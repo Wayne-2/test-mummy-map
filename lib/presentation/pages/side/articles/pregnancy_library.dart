@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/articles/article_detail.dart';
+import 'package:mummymap/presentation/pages/side/articles/article_detail.dart';
 
 final _articles = [
   {

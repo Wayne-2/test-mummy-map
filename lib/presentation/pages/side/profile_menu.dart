@@ -3,9 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/providers/settings_provider.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/articles/pregnancy_library.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/doctors/doctors_screen.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/settings/settings_screen.dart';
+import 'package:mummymap/presentation/pages/side/articles/pregnancy_library.dart';
+import 'package:mummymap/presentation/pages/side/doctors/doctors_screen.dart';
+import 'package:mummymap/presentation/pages/side/settings/settings_screen.dart';
 
 class ProfileMenu extends ConsumerStatefulWidget {
   final VoidCallback onClose;

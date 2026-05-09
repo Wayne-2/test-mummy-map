@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mummymap/data/models/doctor_model.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/doctors/doctors_list_screen.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/doctors/doctor_detail_screen.dart';
+import 'package:mummymap/presentation/pages/side/doctors/doctors_list_screen.dart';
+import 'package:mummymap/presentation/pages/side/doctors/doctor_detail_screen.dart';
 
 class DoctorsScreen extends StatefulWidget {
   const DoctorsScreen({super.key});

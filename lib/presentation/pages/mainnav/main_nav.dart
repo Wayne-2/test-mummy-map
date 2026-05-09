@@ -3,7 +3,9 @@ import 'package:mummymap/presentation/pages/mainnav/home/home_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/groups_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/notifications_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/shop/shop_screen.dart';
-import 'package:mummymap/presentation/pages/mainnav/side/profile_menu.dart';
+import 'package:mummymap/presentation/pages/mainnav/calendar/calendar_screen.dart';
+import 'package:mummymap/presentation/pages/mainnav/track/track_screen.dart';
+import 'package:mummymap/presentation/pages/side/profile_menu.dart';
 
 class MainNav extends StatefulWidget {
   const MainNav({super.key});
@@ -36,14 +38,18 @@ class _MainNavState extends State<MainNav> {
         onNotifications: _openNotifications,
         onProfileTap: _openMenu,
       ),
-      const Scaffold(body: Center(child: Text('Track'))),
-
+      TrackScreen(
+        onNotifications: _openNotifications,
+        onProfileTap: _openMenu,
+      ),
       GroupsScreen(
         onNotifications: _openNotifications,
         onProfileTap: _openMenu,
       ),
-      const Scaffold(body: Center(child: Text('Calendar'))),
-
+      CalendarScreen(
+        onNotifications: _openNotifications,
+        onProfileTap: _openMenu,
+      ),
       ShopScreen(
         onNotifications: _openNotifications,
         onProfileTap: _openMenu,
