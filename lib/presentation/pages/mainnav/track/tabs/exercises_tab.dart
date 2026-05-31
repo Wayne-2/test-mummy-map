@@ -553,7 +553,7 @@ class _HowToSection extends StatelessWidget {
   }
 }
 
-// ─── TRAINING SCREEN ──────────────────────────────────────────────────────────
+
 
 class TrainingScreen extends StatefulWidget {
   const TrainingScreen({super.key});

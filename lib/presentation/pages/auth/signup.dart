@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
 import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
+import 'package:mummymap/presentation/providers/auth_provider.dart';
 
-class SignUp extends StatefulWidget {
+class SignUp extends ConsumerStatefulWidget {
   const SignUp({super.key});
 
   @override
-  State<SignUp> createState() => _SignUpState();
+  ConsumerState<SignUp> createState() => _SignUpState();
 }
 
-class _SignUpState extends State<SignUp> {
+class _SignUpState extends ConsumerState<SignUp> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -29,21 +31,42 @@ class _SignUpState extends State<SignUp> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+    try {
+      final response = await ref.read(authRepositoryProvider).register(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', true);
+      if (!mounted) return;
 
-    if (!mounted) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setString('access_token', response.accessToken);
+      await prefs.setString('refresh_token', response.refreshToken);
 
-    setState(() => _isLoading = false);
+      if (!mounted) return;
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const ProfileSetup()),
-    );
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ProfileSetup(),
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   @override

@@ -300,15 +300,14 @@ class _SimilarGroupCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // SIMILAR GROUP IMAGE — replace 'assets/groups/group_placeholder.png'
-            // with your actual group image asset
+            
             ClipRRect(
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(13),
                 topRight: Radius.circular(13),
               ),
               child: Image.asset(
-                'assets/groups/group_placeholder.png',
+                'assets/mum2.jpg',
                 height: 70,
                 width: double.infinity,
                 fit: BoxFit.cover,

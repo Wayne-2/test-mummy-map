@@ -348,7 +348,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   }
 }
 
-// — unchanged below —
+
 
 class _ProductCard extends ConsumerStatefulWidget {
   final ShopProduct product;

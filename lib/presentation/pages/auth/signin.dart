@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/pages/auth/forgot_password.dart';
 import 'package:mummymap/presentation/pages/auth/signup.dart';
 import 'package:mummymap/presentation/pages/mainnav/main_nav.dart';
 import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
+import 'package:mummymap/presentation/providers/auth_provider.dart';
 
-class SignIn extends StatefulWidget {
+class SignIn extends ConsumerStatefulWidget {
   const SignIn({super.key});
 
   @override
-  State<SignIn> createState() => _SignInState();
+  ConsumerState<SignIn> createState() => _SignInState();
 }
 
-class _SignInState extends State<SignIn> {
+class _SignInState extends ConsumerState<SignIn> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -32,29 +34,50 @@ class _SignInState extends State<SignIn> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
 
-    if (!mounted) return;
+    try {
+      final response = await ref.read(authRepositoryProvider).login(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', true);
+      if (!mounted) return;
 
-    final hasCompletedSetup = prefs.getBool('has_completed_setup') ?? false;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('is_logged_in', true);
+      await prefs.setString('access_token', response.accessToken);
+      await prefs.setString('refresh_token', response.refreshToken);
 
-    if (!mounted) return;
+      final hasCompletedSetup = prefs.getBool('has_completed_setup') ?? false;
 
-    setState(() => _isLoading = false);
+      if (!mounted) return;
 
-    if (hasCompletedSetup) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const MainNav()),
-      );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const ProfileSetup()),
-      );
+      if (hasCompletedSetup) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const MainNav()),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const ProfileSetup(),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -117,7 +140,10 @@ class _SignInState extends State<SignIn> {
                     const SizedBox(height: 6),
                     const Text(
                       'Login to access your account',
-                      style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF9E9E9E),
+                      ),
                     ),
                     const SizedBox(height: 32),
                     _AuthTextField(
@@ -182,7 +208,8 @@ class _SignInState extends State<SignIn> {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 side: const BorderSide(
-                                    color: Color(0xFFBDBDBD)),
+                                  color: Color(0xFFBDBDBD),
+                                ),
                                 activeColor: const Color(0xFF3F2868),
                               ),
                             ),
@@ -243,7 +270,9 @@ class _SignInState extends State<SignIn> {
                                   Text(
                                     'Signing In...',
                                     style: TextStyle(
-                                        fontSize: 16, color: Colors.white),
+                                      fontSize: 16,
+                                      color: Colors.white,
+                                    ),
                                   ),
                                 ],
                               )
@@ -263,7 +292,9 @@ class _SignInState extends State<SignIn> {
                       children: [
                         const Text(
                           "Don't Have An Account? ",
-                          style: TextStyle(color: Color(0xFF9E9E9E)),
+                          style: TextStyle(
+                            color: Color(0xFF9E9E9E),
+                          ),
                         ),
                         GestureDetector(
                           onTap: () {
@@ -319,21 +350,28 @@ class _AuthTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
-      style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A1A)),
+      style: const TextStyle(
+        fontSize: 14,
+        color: Color(0xFF1A1A1A),
+      ),
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
         suffixIcon: suffixIcon,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Color(0xFF3F2868), width: 1.5),
+          borderSide: const BorderSide(
+            color: Color(0xFF3F2868),
+            width: 1.5,
+          ),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -341,7 +379,10 @@ class _AuthTextField extends StatelessWidget {
         ),
         focusedErrorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          borderSide: const BorderSide(
+            color: Colors.red,
+            width: 1.5,
+          ),
         ),
       ),
     );

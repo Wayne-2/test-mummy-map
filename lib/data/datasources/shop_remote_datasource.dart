@@ -1,10 +1,5 @@
 import 'package:mummymap/data/models/shop_product_model.dart';
 
-// Replace the base URL and HTTP client with your actual backend setup.
-// This file is the only place that needs to change when connecting to a real API.
-// Uses the same pattern as the rest of the project — swap the stub returns
-// with actual http/dio calls pointing to your endpoints.
-
 abstract class ShopRemoteDataSource {
   Future<List<ShopProduct>> getProducts();
   Future<List<String>> getCategories();
@@ -15,8 +10,6 @@ abstract class ShopRemoteDataSource {
 
 class ShopRemoteDataSourceImpl implements ShopRemoteDataSource {
   // final Dio _dio;
-  // final String _baseUrl;
-  //
   // ShopRemoteDataSourceImpl(this._dio, this._baseUrl);
 
   @override
@@ -56,7 +49,7 @@ class ShopRemoteDataSourceImpl implements ShopRemoteDataSource {
   }
 }
 
-// ─── Static seed data (used until backend is connected) ──────────────────────
+
 
 const kShopCategories = [
   'All',

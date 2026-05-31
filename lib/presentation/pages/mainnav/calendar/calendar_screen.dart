@@ -139,7 +139,7 @@ class _CalendarAppBar extends StatelessWidget {
   }
 }
 
-// ─── CALENDAR TAB ─────────────────────────────────────────────────────────────
+
 
 class _CalendarTab extends StatefulWidget {
   const _CalendarTab();
@@ -620,8 +620,7 @@ class _CalendarTabState extends State<_CalendarTab> {
   }
 }
 
-// ─── APPOINTMENTS TAB ─────────────────────────────────────────────────────────
-
+// APPOINTMENTS TAB 
 class _AppointmentsTab extends StatefulWidget {
   const _AppointmentsTab();
 
@@ -1043,7 +1042,7 @@ class _EmptyAppointments extends StatelessWidget {
   }
 }
 
-// ─── REMINDERS TAB ────────────────────────────────────────────────────────────
+// REMINDERS TAB 
 
 class _RemindersTab extends StatefulWidget {
   const _RemindersTab();
@@ -1406,7 +1405,7 @@ class _ReminderTileState extends State<_ReminderTile> {
   }
 }
 
-// ─── ADD EVENT SHEET ──────────────────────────────────────────────────────────
+// ADD EVENT SHEET 
 
 enum _NewEventType { appointment, reminder, event }
 
@@ -1682,7 +1681,7 @@ class _AddEventSheetState extends State<_AddEventSheet> {
   }
 }
 
-// ─── AGENDA SHEET ─────────────────────────────────────────────────────────────
+//  AGENDA SHEET 
 
 class _AgendaSheet extends StatelessWidget {
   final List<_CalendarEvent> events;
@@ -1862,7 +1861,7 @@ class _AgendaSheet extends StatelessWidget {
   }
 }
 
-// ─── SMALL WIDGETS ────────────────────────────────────────────────────────────
+// SMALL WIDGETS 
 
 class _FabOption extends StatelessWidget {
   final String label;
@@ -2086,7 +2085,7 @@ class _DateTimeRow extends StatelessWidget {
   }
 }
 
-// ─── DATA MODELS ──────────────────────────────────────────────────────────────
+// DATA MODEL
 
 enum _EventType { appointment, group, reminder }
 

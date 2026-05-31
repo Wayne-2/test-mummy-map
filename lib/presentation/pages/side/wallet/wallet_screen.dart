@@ -1,0 +1,462 @@
+import 'package:flutter/material.dart';
+import 'package:mummymap/data/models/wallet_model.dart';
+import 'package:mummymap/presentation/pages/side/wallet/widget/wallet_widgets.dart';
+import 'transactions_screen.dart';
+import 'transaction_detail_screen.dart';
+import 'wallet_balance_details_screen.dart';
+
+class WalletScreen extends StatefulWidget {
+  const WalletScreen({super.key});
+
+  @override
+  State<WalletScreen> createState() => _WalletScreenState();
+}
+
+class _WalletScreenState extends State<WalletScreen> {
+  bool _balanceVisible = true;
+  double _balance = kWalletBalance;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildAppBar(context),
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildHeroCard(context),
+                    const SizedBox(height: 24),
+                    _buildTransactionHistory(context),
+                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppBar(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const CircleAvatar(
+            radius: 20,
+            backgroundColor: Color(0xFFE8D5F5),
+            child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+          ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/logo3.png',
+                height: 28,
+                width: 28,
+                errorBuilder: (_, __, ___) =>
+                    const SizedBox(width: 28, height: 28),
+              ),
+              const SizedBox(width: 8),
+              RichText(
+                text: const TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'Mummy',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF3F2868),
+                      ),
+                    ),
+                    TextSpan(
+                      text: 'map',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF00BCD4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined,
+                color: Color(0xFF1A1A1A)),
+            onPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 0),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Color(0xFF4A1878),
+            Color(0xFF2D0F4E),
+            Color(0xFF6B3A9E),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 32, 24, 0),
+        child: Column(
+          children: [
+            const Text(
+              'Current Balance',
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.white60,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => WalletBalanceDetailsScreen(
+                      balance: _balance),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _balanceVisible
+                        ? formatBalance(_balance)
+                        : '₦ ••••••',
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  GestureDetector(
+                    onTap: () => setState(
+                        () => _balanceVisible = !_balanceVisible),
+                    child: Icon(
+                      _balanceVisible
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: Colors.white60,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.account_balance_wallet_outlined,
+                      color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    'Wallet',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Expanded(
+                  child: _HeroButton(
+                    icon: Icons.add_circle_outline,
+                    label: 'Deposit',
+                    onTap: () => _showDepositSheet(context),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _HeroButton(
+                    icon: Icons.receipt_long_outlined,
+                    label: 'Transactions',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TransactionsScreen(),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionHistory(BuildContext context) {
+    final preview = kWalletTransactions.take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              const Text(
+                'Transaction History',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TransactionsScreen(),
+                  ),
+                ),
+                child: const Text(
+                  'See All',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF3F2868),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...preview.map((tx) => Column(
+              children: [
+                TransactionTile(
+                  tx: tx,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => TransactionDetailScreen(tx: tx),
+                    ),
+                  ),
+                ),
+                const Divider(height: 1, color: Color(0xFFF5F5F5)),
+              ],
+            )),
+      ],
+    );
+  }
+
+  void _showDepositSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _DepositSheet(
+        onDeposit: (amount) {
+          setState(() => _balance += amount);
+        },
+      ),
+    );
+  }
+}
+
+class _HeroButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const _HeroButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(color: Colors.white.withOpacity(0.2)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DepositSheet extends StatefulWidget {
+  final ValueChanged<double> onDeposit;
+
+  const _DepositSheet({required this.onDeposit});
+
+  @override
+  State<_DepositSheet> createState() => _DepositSheetState();
+}
+
+class _DepositSheetState extends State<_DepositSheet> {
+  final _controller = TextEditingController();
+  bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              'Deposit Funds',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1A1A1A),
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Enter amount to add to your wallet',
+              style: TextStyle(fontSize: 13, color: Color(0xFF9E9E9E)),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _controller,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(
+                  fontSize: 16, color: Color(0xFF1A1A1A)),
+              decoration: InputDecoration(
+                hintText: '₦0.00',
+                hintStyle: const TextStyle(
+                    color: Color(0xFFBDBDBD), fontSize: 16),
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 14),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide:
+                      const BorderSide(color: Color(0xFFE0E0E0)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                      color: Color(0xFF3F2868), width: 1.5),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _isLoading
+                    ? null
+                    : () async {
+                        final amount =
+                            double.tryParse(_controller.text) ?? 0;
+                        if (amount <= 0) return;
+                        setState(() => _isLoading = true);
+                        await Future.delayed(
+                            const Duration(seconds: 2));
+                        if (!mounted) return;
+                        widget.onDeposit(amount);
+                        Navigator.pop(context);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3F2868),
+                  disabledBackgroundColor: const Color(0xFF3F2868),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30)),
+                  elevation: 0,
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                            color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Text(
+                        'Proceed',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

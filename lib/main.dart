@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/pages/auth/signin.dart';
 import 'package:mummymap/presentation/pages/intro/splashscreen.dart';
 
 void main() {
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-    home: const SplashScreen(),
+    home: const SignIn(),
     );
   }
 }

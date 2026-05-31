@@ -6,6 +6,7 @@ import 'package:mummymap/presentation/pages/auth/signin.dart';
 import 'package:mummymap/presentation/pages/side/articles/pregnancy_library.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctors_screen.dart';
 import 'package:mummymap/presentation/pages/side/settings/settings_screen.dart';
+import 'package:mummymap/presentation/pages/side/wallet/wallet_screen.dart';
 
 class ProfileMenu extends ConsumerStatefulWidget {
   final VoidCallback onClose;
@@ -37,8 +38,10 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(-1, 0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
+    ).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _fadeAnimation =
+        Tween<double>(begin: 0, end: 1).animate(_controller);
     _controller.forward();
   }
 
@@ -62,6 +65,16 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SignIn()),
       (_) => false,
+    );
+  }
+
+  Future<void> _navigate(Widget page) async {
+    await _controller.reverse();
+    widget.onClose();
+    if (!mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => page),
     );
   }
 
@@ -103,7 +116,8 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                         ),
                         const SizedBox(height: 20),
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16),
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -116,7 +130,8 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                                   children: [
                                     const CircleAvatar(
                                       radius: 24,
-                                      backgroundColor: Color(0xFFE8D5F5),
+                                      backgroundColor:
+                                          Color(0xFFE8D5F5),
                                       child: Icon(
                                         Icons.person,
                                         color: Color(0xFF3F2868),
@@ -155,7 +170,8 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                                           color: Color(0xFF1A1A1A),
                                         ),
                                       ),
-                                      if (settings.email.isNotEmpty) ...[
+                                      if (settings.email
+                                          .isNotEmpty) ...[
                                         const SizedBox(height: 2),
                                         Text(
                                           settings.email,
@@ -164,7 +180,8 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                                             color: Color(0xFF9E9E9E),
                                           ),
                                           maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                          overflow:
+                                              TextOverflow.ellipsis,
                                         ),
                                       ],
                                     ],
@@ -183,74 +200,34 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                           icon: Icons.menu_book_outlined,
                           label: 'Articles',
                           isActive: widget.activePage == 'articles',
-                          onTap: () async {
-                            await _controller.reverse();
-                            widget.onClose();
-                            if (context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const PregnancyLibrary(),
-                                ),
-                              );
-                            }
-                          },
+                          onTap: () => _navigate(
+                              const PregnancyLibrary()),
                         ),
                         _MenuItem(
                           icon: Icons.medical_services_outlined,
                           label: 'Doctors',
                           isActive: widget.activePage == 'doctors',
-                          onTap: () async {
-                            await _controller.reverse();
-                            widget.onClose();
-                            if (context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const DoctorsScreen(),
-                                ),
-                              );
-                            }
-                          },
+                          onTap: () =>
+                              _navigate(const DoctorsScreen()),
                         ),
                         _MenuItem(
                           icon: Icons.account_balance_wallet_outlined,
                           label: 'Wallet',
                           isActive: widget.activePage == 'wallet',
-                          onTap: () async {
-                            await _controller.reverse();
-                            widget.onClose();
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Wallet coming soon'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            }
-                          },
+                          onTap: () =>
+                              _navigate(const WalletScreen()),
                         ),
                         _MenuItem(
                           icon: Icons.settings_outlined,
                           label: 'Settings',
                           isActive: widget.activePage == 'settings',
-                          onTap: () async {
-                            await _controller.reverse();
-                            widget.onClose();
-                            if (context.mounted) {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => const SettingsScreen(),
-                                ),
-                              );
-                            }
-                          },
+                          onTap: () =>
+                              _navigate(const SettingsScreen()),
                         ),
                         const Spacer(),
                         Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                          padding: const EdgeInsets.fromLTRB(
+                              20, 0, 20, 32),
                           child: GestureDetector(
                             onTap: _logout,
                             child: Row(
@@ -314,9 +291,12 @@ class _MenuItem extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFEDE0FF) : Colors.transparent,
+          color: isActive
+              ? const Color(0xFFEDE0FF)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -333,8 +313,9 @@ class _MenuItem extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight:
-                    isActive ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isActive
+                    ? FontWeight.w600
+                    : FontWeight.normal,
                 color: isActive
                     ? const Color(0xFF3F2868)
                     : const Color(0xFF1A1A1A),

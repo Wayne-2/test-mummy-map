@@ -234,11 +234,10 @@ class _GroupHeader extends StatelessWidget {
       ),
       child: Stack(
         children: [
-          // GROUP BACKGROUND IMAGE — replace 'assets/groups/group_bg_placeholder.png'
-          // with your actual background image asset per group
+         
           Positioned.fill(
             child: Image.asset(
-              'assets/groups/group_bg_placeholder.png',
+              'assets/mum2.jpg',
               fit: BoxFit.cover,
               errorBuilder: (_, __, ___) => const SizedBox(),
             ),
@@ -584,8 +583,7 @@ class _ContributorItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // CONTRIBUTOR AVATAR — replace 'assets/avatars/avatar_placeholder.png'
-        // with actual user avatar assets
+        
         CircleAvatar(
           radius: 26,
           backgroundColor: const Color(0xFFE8D5F5),

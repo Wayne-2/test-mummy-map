@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:mummymap/presentation/pages/mainnav/groups/tabs/explore_tab.dart';
 
 class CommunitySpaces extends StatelessWidget {
   const CommunitySpaces({super.key, VoidCallback? onExploreGroups});
+  
+  get navigator => ExploreTab();
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +61,7 @@ class CommunitySpaces extends StatelessWidget {
                         width: 160,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: () {},
+                          onPressed: () => navigator.pushNamed('/groups'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3F2868),
                             shape: RoundedRectangleBorder(

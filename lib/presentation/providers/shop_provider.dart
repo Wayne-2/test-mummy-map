@@ -7,7 +7,7 @@ import 'package:mummymap/domain/repositories/shop_repository.dart';
 
 import 'package:mummymap/domain/usecases/shop_usecases.dart';
 
-// ─── Providers ───────────────────────────────────────────────────────────────
+
 
 final shopLocalDataSourceProvider = Provider((_) => ShopLocalDataSource());
 
@@ -72,7 +72,6 @@ final shopProvider = StateNotifierProvider<ShopNotifier, ShopState>(
   ),
 );
 
-// ─── State ───────────────────────────────────────────────────────────────────
 
 class ShopState {
   final List<ShopProduct> products;
@@ -132,7 +131,7 @@ class ShopState {
   }
 }
 
-// ─── Notifier ────────────────────────────────────────────────────────────────
+
 
 class ShopNotifier extends StateNotifier<ShopState> {
   final GetProductsUseCase _getProducts;
