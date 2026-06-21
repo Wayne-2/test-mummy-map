@@ -1,14 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/create_group.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/group_detail.dart';
 
-class GroupsTab extends ConsumerWidget {
+class GroupsTab extends ConsumerStatefulWidget {
   const GroupsTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupsTab> createState() => _GroupsTabState();
+}
+
+class _GroupsTabState extends ConsumerState<GroupsTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(groupsProvider.notifier).loadGroups();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(groupsProvider);
     final joinedGroups = state.joinedGroups;
     final unjoinedGroups = state.unjoinedGroups;

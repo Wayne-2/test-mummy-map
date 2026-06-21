@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/presentation/pages/auth/signin.dart';
-import 'package:mummymap/presentation/pages/intro/onboardingscreen.dart';
+import 'package:go_router/go_router.dart';
 
 class Getstarted extends StatelessWidget {
   const Getstarted({super.key});
@@ -34,12 +33,7 @@ class Getstarted extends StatelessWidget {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const OnboardingScreen(),
-                        ),
-                      );
+                      context.push('/onboarding');
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF3F2868),
@@ -63,10 +57,7 @@ class Getstarted extends StatelessWidget {
 
                 GestureDetector(
                   onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const SignIn()),
-                    );
+                    context.push('/signin');
                   },
                   child: RichText(
                     text: const TextSpan(

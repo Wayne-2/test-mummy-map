@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/presentation/pages/auth/signup.dart';
+import 'package:go_router/go_router.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -34,13 +34,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _navigateToSignUp() {
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const SignUp()),
-    );
+    context.go('/signup');
   }
-
-  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();

@@ -5,7 +5,6 @@ class UpcomingAppointments extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Empty for new users, till backend
     final List appointments = [];
 
     return Padding(

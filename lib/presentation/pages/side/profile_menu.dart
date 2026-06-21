@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/providers/settings_provider.dart';
+import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
+import 'package:mummymap/presentation/pages/side/profile/profile_page.dart';
 import 'package:mummymap/presentation/pages/side/articles/pregnancy_library.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctors_screen.dart';
 import 'package:mummymap/presentation/pages/side/settings/settings_screen.dart';
@@ -38,10 +39,8 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(-1, 0),
       end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeOut));
-    _fadeAnimation =
-        Tween<double>(begin: 0, end: 1).animate(_controller);
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _controller.forward();
   }
 
@@ -59,8 +58,10 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
   Future<void> _logout() async {
     await _controller.reverse();
     widget.onClose();
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', false);
+    try {
+      await ref.read(settingsProvider.notifier).clear();
+      await ref.read(authRepositoryProvider).logoutCurrentDevice();
+    } catch (_) {}
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SignIn()),
@@ -116,82 +117,82 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                         ),
                         const SizedBox(height: 20),
                         Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16),
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFF5F5F5),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: Row(
-                              children: [
-                                Stack(
-                                  children: [
-                                    const CircleAvatar(
-                                      radius: 24,
-                                      backgroundColor:
-                                          Color(0xFFE8D5F5),
-                                      child: Icon(
-                                        Icons.person,
-                                        color: Color(0xFF3F2868),
-                                        size: 26,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 0,
-                                      right: 0,
-                                      child: Container(
-                                        width: 12,
-                                        height: 12,
-                                        decoration: BoxDecoration(
-                                          color: Colors.green,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 2,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () => _navigate(const ProfilePage()),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF5F5F5),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                children: [
+                                  Stack(
                                     children: [
-                                      Text(
-                                        settings.fullName,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 15,
-                                          color: Color(0xFF1A1A1A),
+                                      const CircleAvatar(
+                                        radius: 24,
+                                        backgroundColor: Color(0xFFE8D5F5),
+                                        child: Icon(
+                                          Icons.person,
+                                          color: Color(0xFF3F2868),
+                                          size: 26,
                                         ),
                                       ),
-                                      if (settings.email
-                                          .isNotEmpty) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          settings.email,
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            color: Color(0xFF9E9E9E),
+                                      Positioned(
+                                        bottom: 0,
+                                        right: 0,
+                                        child: Container(
+                                          width: 12,
+                                          height: 12,
+                                          decoration: BoxDecoration(
+                                            color: Colors.green,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: Colors.white,
+                                              width: 2,
+                                            ),
                                           ),
-                                          maxLines: 1,
-                                          overflow:
-                                              TextOverflow.ellipsis,
                                         ),
-                                      ],
+                                      ),
                                     ],
                                   ),
-                                ),
-                                const Icon(
-                                  Icons.chevron_right,
-                                  color: Color(0xFF9E9E9E),
-                                ),
-                              ],
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          settings.fullName,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                            color: Color(0xFF1A1A1A),
+                                          ),
+                                        ),
+                                        if (settings.email.isNotEmpty) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            settings.email,
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF9E9E9E),
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.chevron_right,
+                                    color: Color(0xFF9E9E9E),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
@@ -200,34 +201,29 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                           icon: Icons.menu_book_outlined,
                           label: 'Articles',
                           isActive: widget.activePage == 'articles',
-                          onTap: () => _navigate(
-                              const PregnancyLibrary()),
+                          onTap: () => _navigate(const PregnancyLibrary()),
                         ),
                         _MenuItem(
                           icon: Icons.medical_services_outlined,
                           label: 'Doctors',
                           isActive: widget.activePage == 'doctors',
-                          onTap: () =>
-                              _navigate(const DoctorsScreen()),
+                          onTap: () => _navigate(const DoctorsScreen()),
                         ),
                         _MenuItem(
                           icon: Icons.account_balance_wallet_outlined,
                           label: 'Wallet',
                           isActive: widget.activePage == 'wallet',
-                          onTap: () =>
-                              _navigate(const WalletScreen()),
+                          onTap: () => _navigate(const WalletScreen()),
                         ),
                         _MenuItem(
                           icon: Icons.settings_outlined,
                           label: 'Settings',
                           isActive: widget.activePage == 'settings',
-                          onTap: () =>
-                              _navigate(const SettingsScreen()),
+                          onTap: () => _navigate(const SettingsScreen()),
                         ),
                         const Spacer(),
                         Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                              20, 0, 20, 32),
+                          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                           child: GestureDetector(
                             onTap: _logout,
                             child: Row(
@@ -237,8 +233,7 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
                                   height: 36,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFFFEEEE),
-                                    borderRadius:
-                                        BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: const Icon(
                                     Icons.logout,
@@ -291,12 +286,9 @@ class _MenuItem extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 16, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: isActive
-              ? const Color(0xFFEDE0FF)
-              : Colors.transparent,
+          color: isActive ? const Color(0xFFEDE0FF) : Colors.transparent,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -313,9 +305,7 @@ class _MenuItem extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: isActive
-                    ? FontWeight.w600
-                    : FontWeight.normal,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                 color: isActive
                     ? const Color(0xFF3F2868)
                     : const Color(0xFF1A1A1A),

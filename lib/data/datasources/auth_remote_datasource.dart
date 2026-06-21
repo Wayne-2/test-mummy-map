@@ -11,14 +11,10 @@ class AuthRemoteDatasource {
     required String password,
   }) async {
     final res = await dio.post(
-      '/register',
-      data: {
-        'email': email,
-        'password': password,
-      },
+      '/api/v1/auth/register',
+      data: {'email': email, 'password': password},
     );
-
-    return AuthModel.fromJson(res.data);
+    return AuthModel.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<AuthModel> login({
@@ -26,82 +22,67 @@ class AuthRemoteDatasource {
     required String password,
   }) async {
     final res = await dio.post(
-      '/login',
-      data: {
-        'email': email,
-        'password': password,
-      },
+      '/api/v1/auth/login',
+      data: {'email': email, 'password': password},
     );
-
-    return AuthModel.fromJson(res.data);
+    return AuthModel.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<AuthModel> verifyOtp({
-    required String email,
     required String otp,
   }) async {
+    final cleaned = otp.trim();
+    if (cleaned.length != 6 || int.tryParse(cleaned) == null) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/api/v1/auth/user/verify'),
+        error: 'Please enter the 6-digit code from your email.',
+        type: DioExceptionType.unknown,
+      );
+    }
     final res = await dio.post(
-      '/verify-otp',
-      data: {
-        'email': email,
-        'otp': otp,
-      },
+      '/api/v1/auth/user/verify',
+      data: {'otpToken': cleaned},
     );
-
-    return AuthModel.fromJson(res.data);
+    return AuthModel.fromJson(res.data as Map<String, dynamic>);
   }
 
-  Future<void> refreshToken({
+  Future<AuthModel> refreshToken({
     required String refreshToken,
   }) async {
-    await dio.post(
-      '/refresh-token',
+    final res = await dio.post(
+      '/api/v1/auth/refresh',
       data: {'refreshToken': refreshToken},
     );
+    return AuthModel.fromJson(res.data as Map<String, dynamic>);
   }
 
   Future<void> requestPasswordResetOtp({
     required String email,
   }) async {
     await dio.post(
-      '/request-password-reset-otp',
+      '/api/v1/auth/password/forgot',
       data: {'email': email},
     );
   }
 
-  Future<void> verifyResetPasswordOtp({
-    required String email,
-    required String otp,
-  }) async {
-    await dio.post(
-      '/verify-reset-password-otp',
-      data: {
-        'email': email,
-        'otp': otp,
-      },
-    );
-  }
-
   Future<void> resetPassword({
-    required String email,
-    required String password,
-    required String confirmPassword,
+    required String newPassword,
+    required String resetToken,
   }) async {
     await dio.post(
-      '/reset-password',
-      data: {
-        'email': email,
-        'password': password,
-        'confirmPassword': confirmPassword,
-      },
+      '/api/v1/users/password/reset',
+      data: {'newPassword': newPassword},
+      options: Options(
+        headers: {'Authorization': 'Bearer $resetToken'},
+      ),
     );
   }
 
   Future<void> logoutCurrentDevice() async {
-    await dio.post('/logout');
+    await dio.post('/api/v1/auth/logout');
   }
 
   Future<void> logoutAllDevices() async {
-    await dio.post('/logout-all');
+    await dio.post('/api/v1/auth/logout/all');
   }
 }

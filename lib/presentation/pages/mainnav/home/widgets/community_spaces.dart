@@ -8,7 +8,6 @@ class CommunitySpaces extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Empty for new users, till backend
     final List groups = [];
 
     return Padding(
@@ -61,7 +60,7 @@ class CommunitySpaces extends StatelessWidget {
                         width: 160,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: () => navigator.pushNamed('/groups'),
+                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExploreTab())),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3F2868),
                             shape: RoundedRectangleBorder(

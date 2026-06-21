@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import "package:mummymap/data/models/doctor_model.dart";
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/doctor_model.dart';
+import 'package:mummymap/presentation/providers/doctors_provider.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctor_detail_screen.dart';
 
-class DoctorListScreen extends StatefulWidget {
+class DoctorListScreen extends ConsumerStatefulWidget {
   const DoctorListScreen({super.key});
 
   @override
-  State<DoctorListScreen> createState() => _DoctorListScreenState();
+  ConsumerState<DoctorListScreen> createState() => _DoctorListScreenState();
 }
 
-class _DoctorListScreenState extends State<DoctorListScreen> {
+class _DoctorListScreenState extends ConsumerState<DoctorListScreen> {
   final _searchController = TextEditingController();
   String _query = '';
 
@@ -19,10 +21,10 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
     super.dispose();
   }
 
-  List<Doctor> get _filtered {
-    if (_query.isEmpty) return kDoctors;
+  List<Doctor> _filtered(List<Doctor> doctors) {
+    if (_query.isEmpty) return doctors;
     final q = _query.toLowerCase();
-    return kDoctors.where((d) {
+    return doctors.where((d) {
       return d.name.toLowerCase().contains(q) ||
           d.specialty.toLowerCase().contains(q) ||
           d.hospital.toLowerCase().contains(q);
@@ -31,6 +33,9 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final doctors = ref.watch(doctorsProvider).doctors;
+    final filtered = _filtered(doctors);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -88,7 +93,7 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: _filtered.isEmpty
+              child: filtered.isEmpty
                   ? const Center(
                       child: Text(
                         'No doctors found',
@@ -105,9 +110,9 @@ class _DoctorListScreenState extends State<DoctorListScreen> {
                         mainAxisSpacing: 16,
                         childAspectRatio: 0.72,
                       ),
-                      itemCount: _filtered.length,
+                      itemCount: filtered.length,
                       itemBuilder: (context, index) =>
-                          _DoctorCard(doctor: _filtered[index]),
+                          _DoctorCard(doctor: filtered[index]),
                     ),
             ),
           ],

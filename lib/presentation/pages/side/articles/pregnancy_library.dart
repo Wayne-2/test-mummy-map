@@ -1,113 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/article_model.dart';
 import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
+import 'package:mummymap/presentation/providers/article_provider.dart';
 import 'package:mummymap/presentation/pages/side/articles/article_detail.dart';
-
-final _articles = [
-  {
-    'id': '1',
-    'category': 'Nutrition',
-    'title': 'Eating for Two: 5 Essential Nutrients Every Pregnant Woman Needs',
-    'excerpt':
-        'While cravings may be unpredictable, your body is working hard behind the scenes, and fueling it with the right nutrients can make all the difference.',
-    'image': 'assets/articles/nutrition_1.png',
-    'likes': '12k',
-    'shares': '364',
-    'comments': '5.3k',
-    'author': 'Mummy Map Team',
-    'updated': '2w ago',
-    'isFeatured': true,
-    'week': 'Week 18',
-    'body': '''Pregnancy is a beautiful journey and what you eat plays a powerful role in supporting both your health and your baby's development.
-
-While cravings may be unpredictable, your body is working hard behind the scenes, and fueling it with the right nutrients can make all the difference. Here are five essential nutrients every expectant mom should keep an eye on:
-
-1. Folate (Folic Acid)
-Folate is crucial in the early stages of pregnancy, helping to prevent neural tube defects and support brain development.
-Top sources: Leafy greens, beans, citrus fruits, and fortified cereals.
-
-2. Iron
-Your blood volume increases during pregnancy, so iron helps carry oxygen to your baby.
-Top sources: Red meat, spinach, lentils, and fortified cereals.
-
-3. Calcium
-Essential for your baby's bone and teeth development.
-Top sources: Dairy products, fortified plant milks, broccoli, and kale.
-
-4. Omega-3 Fatty Acids
-Support your baby's brain and eye development.
-Top sources: Salmon, sardines, walnuts, and flaxseeds.
-
-5. Protein
-Helps build and repair tissues for both you and your baby.
-Top sources: Eggs, poultry, beans, lentils, tofu, and Greek yogurt.
-
-Tip: Don't stress over getting it perfect every day. Focus on variety, color, and balance — and always listen to your body. And of course, check with your doctor before starting any supplements or major diet changes.
-
-Quick Reminder:
-Always stay hydrated, eat small frequent meals, and don't skip breakfast your baby (and your energy levels) will thank you!''',
-    'tags': ['Nutrition', 'Physical Well-Being'],
-  },
-  {
-    'id': '2',
-    'category': 'Mental Health',
-    'title': '5 Foods to Help with Morning Sickness',
-    'excerpt':
-        'While cravings may be unpredictable, your body is working hard behind the scenes.',
-    'image': 'assets/articles/mental_health_1.png',
-    'likes': '12k',
-    'shares': '364',
-    'comments': '5.3k',
-    'author': 'Mummy Map Team',
-    'updated': '1w ago',
-    'isFeatured': false,
-    'week': 'Week 18',
-    'body': 'Full article content goes here...',
-    'tags': ['Mental Health'],
-  },
-  {
-    'id': '3',
-    'category': 'Exercise',
-    'title': '5 Foods to Help with Morning Sickness',
-    'excerpt':
-        'While cravings may be unpredictable, your body is working hard behind the scenes.',
-    'image': 'assets/articles/exercise_1.png',
-    'likes': '12k',
-    'shares': '364',
-    'comments': '5.3k',
-    'author': 'Mummy Map Team',
-    'updated': '3d ago',
-    'isFeatured': false,
-    'week': 'Week 18',
-    'body': 'Full article content goes here...',
-    'tags': ['Exercise'],
-  },
-  {
-    'id': '4',
-    'category': 'Trimester',
-    'title': 'What to Expect in Your Second Trimester',
-    'excerpt':
-        'The second trimester is often called the golden period of pregnancy.',
-    'image': 'assets/articles/trimester_1.png',
-    'likes': '8k',
-    'shares': '201',
-    'comments': '3.1k',
-    'author': 'Mummy Map Team',
-    'updated': '5d ago',
-    'isFeatured': false,
-    'week': 'Week 14',
-    'body': 'Full article content goes here...',
-    'tags': ['Trimester'],
-  },
-];
-
-final _categories = [
-  'All',
-  'Trimester',
-  'Nutrition',
-  'Exercise',
-  'Mental Health',
-];
 
 class PregnancyLibrary extends ConsumerStatefulWidget {
   const PregnancyLibrary({super.key});
@@ -117,30 +13,12 @@ class PregnancyLibrary extends ConsumerStatefulWidget {
 }
 
 class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
-  String _selectedCategory = 'All';
   bool _isGridView = true;
-  final _featuredController = PageController();
-  int _featuredPage = 0;
-
-  List<Map<String, dynamic>> get _filtered {
-    if (_selectedCategory == 'All') return _articles;
-    return _articles
-        .where((a) => a['category'] == _selectedCategory)
-        .toList();
-  }
-
-  List<Map<String, dynamic>> get _featured =>
-      _articles.where((a) => a['isFeatured'] == true).toList();
-
-  @override
-  void dispose() {
-    _featuredController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
     final pregnancy = ref.watch(pregnancyProvider);
+    final state = ref.watch(articleProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -154,19 +32,28 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 8),
-                    _buildCategoryFilter(),
+                    _buildCategoryFilter(state),
                     const SizedBox(height: 16),
                     if (pregnancy != null) ...[
                       _buildTrimesterBanner(pregnancy),
                       const SizedBox(height: 20),
                     ],
-                    if (_featured.isNotEmpty && _selectedCategory == 'All') ...[
-                      _buildFeaturedCarousel(),
-                      const SizedBox(height: 20),
-                    ],
-                    _isGridView
-                        ? _buildGridArticles()
-                        : _buildListArticles(),
+                    if (state.isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 60),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                              color: Color(0xFF3F2868)),
+                        ),
+                      )
+                    else if (state.errorMessage != null)
+                      _buildError(state.errorMessage!)
+                    else if (state.articles.isEmpty)
+                      _buildEmpty()
+                    else
+                      _isGridView
+                          ? _buildGridArticles(state.articles)
+                          : _buildListArticles(state.articles),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -213,26 +100,26 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
     );
   }
 
-  Widget _buildCategoryFilter() {
+  Widget _buildCategoryFilter(ArticleState state) {
     return SizedBox(
       height: 40,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _categories.length,
+        itemCount: state.categories.length,
         itemBuilder: (context, index) {
-          final cat = _categories[index];
-          final isSelected = _selectedCategory == cat;
+          final cat = state.categories[index];
+          final isSelected = state.selectedCategory == cat;
           return GestureDetector(
-            onTap: () => setState(() => _selectedCategory = cat),
+            onTap: () =>
+                ref.read(articleProvider.notifier).selectCategory(cat),
             child: Container(
               margin: const EdgeInsets.only(right: 10),
               padding:
                   const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? const Color(0xFF3F2868)
-                    : Colors.transparent,
+                color:
+                    isSelected ? const Color(0xFF3F2868) : Colors.transparent,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
                   color: isSelected
@@ -240,13 +127,16 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
                       : Colors.grey.shade300,
                 ),
               ),
-              child: Text(
-                cat,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.normal,
-                  color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
+              child: Center(
+                child: Text(
+                  ArticleCategories.display(cat),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight:
+                        isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color:
+                        isSelected ? Colors.white : const Color(0xFF1A1A1A),
+                  ),
                 ),
               ),
             ),
@@ -284,10 +174,7 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
                   const SizedBox(height: 4),
                   Text(
                     "Here's your week-by-week breakdown",
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 13, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -299,11 +186,8 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
                 border: Border.all(color: const Color(0xFF3F2868)),
                 borderRadius: BorderRadius.circular(18),
               ),
-              child: const Icon(
-                Icons.arrow_forward,
-                color: Color(0xFF3F2868),
-                size: 18,
-              ),
+              child: const Icon(Icons.arrow_forward,
+                  color: Color(0xFF3F2868), size: 18),
             ),
           ],
         ),
@@ -311,129 +195,7 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
     );
   }
 
-  Widget _buildFeaturedCarousel() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 160,
-          child: PageView.builder(
-            controller: _featuredController,
-            itemCount: _featured.length,
-            onPageChanged: (i) => setState(() => _featuredPage = i),
-            itemBuilder: (context, index) {
-              final article = _featured[index];
-              return GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ArticleDetail(article: article),
-                  ),
-                ),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Row(
-                            children: [
-                              Icon(Icons.auto_awesome,
-                                  color: Color(0xFF3F2868), size: 14),
-                              SizedBox(width: 4),
-                              Text(
-                                'Just for you',
-                                style: TextStyle(
-                                  color: Color(0xFF3F2868),
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Text(
-                            article['week'] as String,
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        article['title'] as String,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A1A1A),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const Spacer(),
-                      Row(
-                        children: [
-                          Icon(Icons.bookmark_outline,
-                              size: 18, color: Colors.grey.shade500),
-                          const SizedBox(width: 16),
-                          Icon(Icons.share_outlined,
-                              size: 18, color: Colors.grey.shade500),
-                          const SizedBox(width: 16),
-                          Icon(Icons.favorite_outline,
-                              size: 18, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
-                          Text(
-                            article['likes'] as String,
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(
-            _featured.length,
-            (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: _featuredPage == i ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: _featuredPage == i
-                    ? const Color(0xFF3F2868)
-                    : Colors.grey.shade300,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGridArticles() {
-    final articles = _filtered;
+  Widget _buildGridArticles(List<Article> articles) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GridView.builder(
@@ -452,77 +214,131 @@ class _PregnancyLibraryState extends ConsumerState<PregnancyLibrary> {
     );
   }
 
-  Widget _buildListArticles() {
-    final articles = _filtered;
+  Widget _buildListArticles(List<Article> articles) {
     return Column(
       children: articles.map((a) => _ListArticleCard(article: a)).toList(),
     );
   }
+
+  Widget _buildEmpty() {
+    return const Padding(
+      padding: EdgeInsets.only(top: 60),
+      child: Center(
+        child: Text(
+          'No articles yet',
+          style: TextStyle(fontSize: 15, color: Color(0xFF9E9E9E)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError(String message) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 60),
+      child: Center(
+        child: Column(
+          children: [
+            Text(message,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF9E9E9E))),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => ref.read(articleProvider.notifier).load(),
+              child: const Text('Retry',
+                  style: TextStyle(color: Color(0xFF3F2868))),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _GridArticleCard extends StatelessWidget {
-  final Map<String, dynamic> article;
+class _ArticleThumb extends StatelessWidget {
+  final String? url;
+  final double height;
+  final double? width;
+
+  const _ArticleThumb({required this.url, required this.height, this.width});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget placeholder() => Container(
+          height: height,
+          width: width,
+          color: Colors.grey.shade200,
+          child: const Icon(Icons.image_outlined, color: Colors.grey, size: 32),
+        );
+    if (url == null || url!.isEmpty) return placeholder();
+    return Image.network(
+      url!,
+      height: height,
+      width: width ?? double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, __, ___) => placeholder(),
+    );
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  final String label;
+
+  const _CategoryChip({required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF3E8FF),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_offer_outlined,
+              size: 12, color: Color(0xFF3F2868)),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Color(0xFF3F2868),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridArticleCard extends ConsumerWidget {
+  final Article article;
 
   const _GridArticleCard({required this.article});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBookmarked =
+        ref.watch(articleProvider).isBookmarked(article.id);
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ArticleDetail(article: article),
-        ),
+        MaterialPageRoute(builder: (_) => ArticleDetail(article: article)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3E8FF),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.local_offer_outlined,
-                    size: 12, color: Color(0xFF3F2868)),
-                const SizedBox(width: 4),
-                Text(
-                  article['category'] as String,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF3F2868),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _CategoryChip(label: article.categoryDisplay),
           const SizedBox(height: 8),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              article['image'] as String,
-              height: 110,
-              width: double.infinity,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                height: 110,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.image_outlined,
-                    color: Colors.grey, size: 32),
-              ),
-            ),
+            child: _ArticleThumb(url: article.thumbnail, height: 110),
           ),
           const SizedBox(height: 8),
           Text(
-            article['title'] as String,
+            article.title,
             style: const TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
@@ -531,33 +347,37 @@ class _GridArticleCard extends StatelessWidget {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
-          Text(
-            article['excerpt'] as String,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey.shade500,
-              height: 1.4,
+          if (article.excerpt != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              article.excerpt!,
+              style: TextStyle(
+                  fontSize: 11, color: Colors.grey.shade500, height: 1.4),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
+          ],
           const Spacer(),
           Row(
             children: [
-              Icon(Icons.favorite_outline,
-                  size: 14, color: Colors.grey.shade500),
-              const SizedBox(width: 4),
               Text(
-                article['likes'] as String,
+                article.publishedLabel,
                 style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
               ),
               const Spacer(),
-              Icon(Icons.bookmark_outline,
-                  size: 14, color: Colors.grey.shade500),
+              GestureDetector(
+                onTap: () =>
+                    ref.read(articleProvider.notifier).toggleBookmark(article.id),
+                child: Icon(
+                  isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                  size: 16,
+                  color: isBookmarked
+                      ? const Color(0xFF3F2868)
+                      : Colors.grey.shade500,
+                ),
+              ),
               const SizedBox(width: 10),
-              Icon(Icons.share_outlined,
-                  size: 14, color: Colors.grey.shade500),
+              Icon(Icons.share_outlined, size: 14, color: Colors.grey.shade500),
             ],
           ),
         ],
@@ -566,49 +386,26 @@ class _GridArticleCard extends StatelessWidget {
   }
 }
 
-class _ListArticleCard extends StatelessWidget {
-  final Map<String, dynamic> article;
+class _ListArticleCard extends ConsumerWidget {
+  final Article article;
 
   const _ListArticleCard({required this.article});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isBookmarked =
+        ref.watch(articleProvider).isBookmarked(article.id);
     return GestureDetector(
       onTap: () => Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ArticleDetail(article: article),
-        ),
+        MaterialPageRoute(builder: (_) => ArticleDetail(article: article)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3E8FF),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.local_offer_outlined,
-                      size: 12, color: Color(0xFF3F2868)),
-                  const SizedBox(width: 4),
-                  Text(
-                    article['category'] as String,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF3F2868),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            _CategoryChip(label: article.categoryDisplay),
             const SizedBox(height: 10),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -618,7 +415,7 @@ class _ListArticleCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        article['title'] as String,
+                        article.title,
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
@@ -627,55 +424,52 @@ class _ListArticleCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        article['excerpt'] as String,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade500,
-                          height: 1.4,
+                      if (article.excerpt != null) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          article.excerpt!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade500,
+                            height: 1.4,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 12),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Image.asset(
-                    article['image'] as String,
-                    width: 90,
-                    height: 80,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
-                      width: 90,
-                      height: 80,
-                      color: Colors.grey.shade200,
-                      child: const Icon(Icons.image_outlined,
-                          color: Colors.grey),
-                    ),
-                  ),
+                  child:
+                      _ArticleThumb(url: article.thumbnail, height: 80, width: 90),
                 ),
               ],
             ),
             const SizedBox(height: 10),
             Row(
               children: [
-                Icon(Icons.bookmark_outline,
-                    size: 16, color: Colors.grey.shade500),
+                GestureDetector(
+                  onTap: () => ref
+                      .read(articleProvider.notifier)
+                      .toggleBookmark(article.id),
+                  child: Icon(
+                    isBookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                    size: 16,
+                    color: isBookmarked
+                        ? const Color(0xFF3F2868)
+                        : Colors.grey.shade500,
+                  ),
+                ),
                 const SizedBox(width: 16),
                 Icon(Icons.share_outlined,
                     size: 16, color: Colors.grey.shade500),
-                const SizedBox(width: 16),
-                Icon(Icons.favorite_outline,
-                    size: 16, color: Colors.grey.shade500),
-                const SizedBox(width: 4),
+                const Spacer(),
                 Text(
-                  article['likes'] as String,
-                  style: TextStyle(
-                      fontSize: 12, color: Colors.grey.shade500),
+                  article.publishedLabel,
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                 ),
               ],
             ),

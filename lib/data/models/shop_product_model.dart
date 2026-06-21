@@ -1,11 +1,49 @@
+class ShopCategories {
+  ShopCategories._();
+
+  static const all = 'ALL';
+
+  static const values = [
+    'MATERNITY_CLOTHING',
+    'BABY_GEAR',
+    'FEEDING',
+    'HEALTH_WELLNESS',
+    'TOYS',
+    'NURSERY',
+    'POSTPARTUM_CARE',
+    'OTHER',
+  ];
+
+  static const withAll = [all, ...values];
+
+  static String display(String raw) {
+    if (raw == all) return 'All';
+    return raw
+        .split('_')
+        .map((w) => w.isEmpty
+            ? w
+            : '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .join(' ');
+  }
+}
+
+String formatNaira(num value) {
+  final whole = value.round().toString().replaceAllMapped(
+        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+        (m) => '${m[1]},',
+      );
+  return '\u20A6$whole';
+}
+
 class ShopProduct {
   final String id;
   final String name;
   final String category;
-  final String price;
   final double priceValue;
-  final List<String> images;
   final String description;
+  final String? imageUrl;
+  final bool inStock;
+  final int stockCount;
   final double rating;
   final int reviewCount;
   final List<String> tags;
@@ -14,43 +52,43 @@ class ShopProduct {
     required this.id,
     required this.name,
     required this.category,
-    required this.price,
     required this.priceValue,
-    required this.images,
     required this.description,
-    required this.rating,
-    required this.reviewCount,
-    required this.tags,
+    this.imageUrl,
+    this.inStock = true,
+    this.stockCount = 0,
+    this.rating = 0,
+    this.reviewCount = 0,
+    this.tags = const [],
   });
 
-  factory ShopProduct.fromJson(Map<String, dynamic> json) {
-    return ShopProduct(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      category: json['category'] as String,
-      price: json['price'] as String,
-      priceValue: (json['price_value'] as num).toDouble(),
-      images: List<String>.from(json['images'] as List),
-      description: json['description'] as String,
-      rating: (json['rating'] as num).toDouble(),
-      reviewCount: json['review_count'] as int,
-      tags: List<String>.from(json['tags'] as List),
-    );
-  }
+  String get price => formatNaira(priceValue);
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'category': category,
-      'price': price,
-      'price_value': priceValue,
-      'images': images,
-      'description': description,
-      'rating': rating,
-      'review_count': reviewCount,
-      'tags': tags,
-    };
+  String get categoryDisplay => ShopCategories.display(category);
+
+  List<String> get images => imageUrl != null && imageUrl!.isNotEmpty
+      ? [imageUrl!]
+      : const [];
+
+  factory ShopProduct.fromJson(Map<String, dynamic> json) {
+    final root = (json['data'] is Map<String, dynamic>)
+        ? json['data'] as Map<String, dynamic>
+        : json;
+    return ShopProduct(
+      id: (root['id'] ?? '').toString(),
+      name: (root['name'] ?? '') as String,
+      category: (root['category'] ?? 'OTHER') as String,
+      priceValue: (root['price'] as num?)?.toDouble() ?? 0,
+      description: (root['description'] ?? '') as String,
+      imageUrl: root['image'] as String?,
+      inStock: root['inStock'] as bool? ?? true,
+      stockCount: (root['stockCount'] as num?)?.toInt() ?? 0,
+      rating: (root['rating'] as num?)?.toDouble() ?? 0,
+      reviewCount: (root['reviewCount'] as num?)?.toInt() ?? 0,
+      tags: root['tags'] is List
+          ? List<String>.from(root['tags'] as List)
+          : const [],
+    );
   }
 }
 
@@ -64,16 +102,27 @@ class CartItem {
       CartItem(product: product, quantity: quantity ?? this.quantity);
 
   factory CartItem.fromJson(Map<String, dynamic> json) {
-    return CartItem(
-      product: ShopProduct.fromJson(json['product'] as Map<String, dynamic>),
-      quantity: json['quantity'] as int,
-    );
+    final qty = (json['quantity'] as num?)?.toInt() ?? 1;
+    if (json['product'] is Map<String, dynamic>) {
+      return CartItem(
+        product: ShopProduct.fromJson(json['product'] as Map<String, dynamic>),
+        quantity: qty,
+      );
+    }
+    return CartItem(product: ShopProduct.fromJson(json), quantity: qty);
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'product': product.toJson(),
-      'quantity': quantity,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+        'product': {
+          'id': product.id,
+          'name': product.name,
+          'category': product.category,
+          'price': product.priceValue,
+          'description': product.description,
+          'image': product.imageUrl,
+          'inStock': product.inStock,
+          'stockCount': product.stockCount,
+        },
+        'quantity': quantity,
+      };
 }

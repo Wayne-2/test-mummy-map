@@ -1,43 +1,49 @@
 import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mummymap/data/models/shop_product_model.dart';
 
 class ShopLocalDataSource {
+  static const _boxName = 'shop_box';
   static const _cartKey = 'shop_cart';
   static const _wishlistKey = 'shop_wishlist';
 
+  Box<String> get _box => Hive.box<String>(_boxName);
+
   Future<List<CartItem>> getCart() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_cartKey);
+    final json = _box.get(_cartKey);
     if (json == null) return [];
-    final List decoded = jsonDecode(json) as List;
-    return decoded
-        .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
-        .toList();
+    try {
+      final List decoded = jsonDecode(json) as List;
+      return decoded
+          .map((e) => CartItem.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> saveCart(List<CartItem> items) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+    await _box.put(
       _cartKey,
       jsonEncode(items.map((e) => e.toJson()).toList()),
     );
   }
 
   Future<List<String>> getWishlist() async {
-    final prefs = await SharedPreferences.getInstance();
-    final json = prefs.getString(_wishlistKey);
+    final json = _box.get(_wishlistKey);
     if (json == null) return [];
-    return List<String>.from(jsonDecode(json) as List);
+    try {
+      return List<String>.from(jsonDecode(json) as List);
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> saveWishlist(List<String> ids) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_wishlistKey, jsonEncode(ids));
+    await _box.put(_wishlistKey, jsonEncode(ids));
   }
 
   Future<void> clearCart() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_cartKey);
+    await _box.delete(_cartKey);
   }
 }

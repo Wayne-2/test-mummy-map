@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/create_group.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/group_detail.dart';
@@ -35,8 +36,10 @@ class _ExploreTabState extends ConsumerState<ExploreTab> {
     }).toList();
     final posts = state.posts;
 
-    return SingleChildScrollView(
-      child: Column(
+    return Material(
+      color: Colors.white,
+      child: SingleChildScrollView(
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
@@ -176,6 +179,7 @@ class _ExploreTabState extends ConsumerState<ExploreTab> {
             ],
           ],
         ],
+        ),
       ),
     );
   }

@@ -1,9 +1,44 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:mummymap/presentation/pages/auth/signin.dart';
-import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
+import 'package:mummymap/presentation/pages/auth/verify_otp.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
+
+String describeAuthError(Object e) {
+  const connection = 'Couldn\'t connect. Please check your internet and try again.';
+  const generic = 'Something went wrong. Please try again.';
+
+  if (e is! DioException) return generic;
+
+  switch (e.type) {
+    case DioExceptionType.connectionTimeout:
+    case DioExceptionType.sendTimeout:
+    case DioExceptionType.receiveTimeout:
+    case DioExceptionType.connectionError:
+    case DioExceptionType.badCertificate:
+    case DioExceptionType.unknown:
+      return connection;
+    case DioExceptionType.cancel:
+      return generic;
+    case DioExceptionType.badResponse:
+      break;
+  }
+
+  final data = e.response?.data;
+
+  if (data is Map) {
+    final raw = data['message'] ?? data['error'];
+    final msg = raw is List ? raw.join('\n') : raw?.toString();
+    if (msg != null && msg.isNotEmpty) return msg;
+  } else if (data is List && data.isNotEmpty && data.first is Map) {
+    final first = data.first as Map;
+    final msg = (first['message'] ?? first['error'])?.toString();
+    if (msg != null && msg.isNotEmpty) return msg;
+  }
+
+  return generic;
+}
 
 class SignUp extends ConsumerStatefulWidget {
   const SignUp({super.key});
@@ -28,53 +63,50 @@ class _SignUpState extends ConsumerState<SignUp> {
   }
 
   Future<void> _handleSignUp() async {
+    if (_isLoading) return;
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      final response = await ref.read(authRepositoryProvider).register(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+
+      await ref.read(authRepositoryProvider).register(
+            email: email,
+            password: password,
           );
 
       if (!mounted) return;
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('is_logged_in', true);
-      await prefs.setString('access_token', response.accessToken);
-      await prefs.setString('refresh_token', response.refreshToken);
-
-      if (!mounted) return;
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const ProfileSetup(),
-        ),
+      context.push(
+        '/verify-otp',
+        extra: {
+          'email': email,
+          'password': password,
+          'isSignup': true,
+        },
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text(describeAuthError(e)),
             backgroundColor: Colors.red,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -87,34 +119,34 @@ class _SignUpState extends ConsumerState<SignUp> {
               ),
             ),
           ),
-          Positioned(
-            bottom: 190,
-            left: 16,
-            right: 16,
-            top: screenHeight * 0.18,
-            child: Container(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 32,
-                bottom: bottomPadding + 24,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 24,
-                    offset: Offset(0, 8),
+          SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    left: 16,
+                    right: 16,
+                    top: screenHeight * 0.18,
+                    bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                   ),
-                ],
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+                  child: Container(
+                    padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(32),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x1A000000),
+                          blurRadius: 24,
+                          offset: Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
                     Image.asset('assets/logo3.png', height: 48, width: 48),
                     const SizedBox(height: 16),
                     const Text(
@@ -170,14 +202,23 @@ class _SignUpState extends ConsumerState<SignUp> {
                         if (value == null || value.isEmpty) {
                           return 'Password is required';
                         }
-                        if (value.length < 6) {
-                          return 'Minimum 6 characters';
+                        if (value.length < 8) {
+                          return 'Minimum 8 characters';
+                        }
+                        if (value.length > 20) {
+                          return 'Maximum 20 characters';
                         }
                         if (!RegExp(r'[A-Z]').hasMatch(value)) {
-                          return 'Must contain uppercase letter';
+                          return 'Must contain an uppercase letter';
+                        }
+                        if (!RegExp(r'[a-z]').hasMatch(value)) {
+                          return 'Must contain a lowercase letter';
                         }
                         if (!RegExp(r'[0-9]').hasMatch(value)) {
                           return 'Must contain a number';
+                        }
+                        if (!RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]').hasMatch(value)) {
+                          return 'Must contain a symbol';
                         }
                         return null;
                       },
@@ -237,12 +278,7 @@ class _SignUpState extends ConsumerState<SignUp> {
                         ),
                         GestureDetector(
                           onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const SignIn(),
-                              ),
-                            );
+                            context.replace('/signin');
                           },
                           child: const Text(
                             'Sign In',
@@ -254,9 +290,12 @@ class _SignUpState extends ConsumerState<SignUp> {
                         ),
                       ],
                     ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              );
+              },
             ),
           ),
         ],

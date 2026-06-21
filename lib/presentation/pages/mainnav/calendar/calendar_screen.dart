@@ -620,7 +620,6 @@ class _CalendarTabState extends State<_CalendarTab> {
   }
 }
 
-// APPOINTMENTS TAB 
 class _AppointmentsTab extends StatefulWidget {
   const _AppointmentsTab();
 
@@ -632,13 +631,15 @@ class _AppointmentsTabState extends State<_AppointmentsTab> {
   String _filter = 'Upcoming';
   int _selectedDayOffset = 0;
 
-  final List<DoctorAppointment> _appointments = kScheduledAppointments;
+  List<DoctorAppointment> get _appointments => kScheduledAppointments;
 
   List<DateTime> get _days {
     final today = DateTime.now();
     return List.generate(
         7, (i) => DateTime(today.year, today.month, today.day + i));
   }
+  
+  get kScheduledAppointments => null;
 
   @override
   Widget build(BuildContext context) {
@@ -1040,11 +1041,7 @@ class _EmptyAppointments extends StatelessWidget {
       ),
     );
   }
-}
-
-// REMINDERS TAB 
-
-class _RemindersTab extends StatefulWidget {
+}class _RemindersTab extends StatefulWidget {
   const _RemindersTab();
 
   @override
@@ -1393,7 +1390,7 @@ class _ReminderTileState extends State<_ReminderTile> {
           Switch(
             value: r.enabled,
             onChanged: widget.onToggle,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: const Color(0xFF3F2868),
             inactiveThumbColor: Colors.white,
             inactiveTrackColor: const Color(0xFFE0E0E0),
@@ -1403,11 +1400,7 @@ class _ReminderTileState extends State<_ReminderTile> {
       ),
     );
   }
-}
-
-// ADD EVENT SHEET 
-
-enum _NewEventType { appointment, reminder, event }
+}enum _NewEventType { appointment, reminder, event }
 
 class _AddEventSheet extends StatefulWidget {
   final _NewEventType initialType;
@@ -1592,7 +1585,7 @@ class _AddEventSheetState extends State<_AddEventSheet> {
                           value: _allDay,
                           onChanged: (v) =>
                               setState(() => _allDay = v),
-                          activeColor: Colors.white,
+                          activeThumbColor: Colors.white,
                           activeTrackColor: const Color(0xFF3F2868),
                           inactiveThumbColor: Colors.white,
                           inactiveTrackColor:
@@ -1679,11 +1672,7 @@ class _AddEventSheetState extends State<_AddEventSheet> {
       ),
     );
   }
-}
-
-//  AGENDA SHEET 
-
-class _AgendaSheet extends StatelessWidget {
+}class _AgendaSheet extends StatelessWidget {
   final List<_CalendarEvent> events;
 
   const _AgendaSheet({required this.events});
@@ -1859,11 +1848,7 @@ class _AgendaSheet extends StatelessWidget {
     const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     return days[weekday - 1];
   }
-}
-
-// SMALL WIDGETS 
-
-class _FabOption extends StatelessWidget {
+}class _FabOption extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
@@ -2083,11 +2068,7 @@ class _DateTimeRow extends StatelessWidget {
       ),
     );
   }
-}
-
-// DATA MODEL
-
-enum _EventType { appointment, group, reminder }
+}enum _EventType { appointment, group, reminder }
 
 class _CalendarEvent {
   final String title;

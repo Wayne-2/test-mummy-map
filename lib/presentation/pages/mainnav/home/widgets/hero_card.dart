@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
 
+import 'package:mummymap/presentation/providers/profile_provider.dart';
+import 'package:mummymap/presentation/providers/settings_provider.dart';
+
 class HeroCard extends ConsumerWidget {
   const HeroCard({super.key});
 
@@ -15,6 +18,13 @@ class HeroCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pregnancy = ref.watch(pregnancyProvider);
+    final profileState = ref.watch(profileProvider);
+    final settings = ref.watch(settingsProvider);
+    
+    final backendName = profileState.value?.firstName;
+    final firstName = (backendName != null && backendName.trim().isNotEmpty)
+        ? backendName
+        : (settings.firstName.isNotEmpty ? settings.firstName : 'Mum');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -59,9 +69,9 @@ class HeroCard extends ConsumerWidget {
                       color: Colors.white70,
                     ),
                   ),
-                  const Text(
-                    'Mum',
-                    style: TextStyle(
+                  Text(
+                    firstName,
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,

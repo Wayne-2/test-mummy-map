@@ -1,18 +1,23 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
+import 'package:mummymap/presentation/pages/auth/signup.dart' show describeAuthError;
+import 'package:mummymap/presentation/providers/auth_provider.dart';
+import 'package:go_router/go_router.dart';
 
-class ForgotPassword extends StatefulWidget {
+class ForgotPassword extends ConsumerStatefulWidget {
   const ForgotPassword({super.key});
 
   @override
-  State<ForgotPassword> createState() => _ForgotPasswordState();
+  ConsumerState<ForgotPassword> createState() => _ForgotPasswordState();
 }
 
-class _ForgotPasswordState extends State<ForgotPassword> {
+class _ForgotPasswordState extends ConsumerState<ForgotPassword> {
   int _step = 0;
   String _email = '';
+  String _resetToken = '';
 
   void _onEmailSubmitted(String email) {
     setState(() {
@@ -21,16 +26,15 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     });
   }
 
-  void _onOtpVerified() {
-    setState(() => _step = 2);
+  void _onOtpVerified(String resetToken) {
+    setState(() {
+      _resetToken = resetToken;
+      _step = 2;
+    });
   }
 
   void _onResetComplete() {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(builder: (_) => const SignIn()),
-      (_) => false,
-    );
+    context.go('/signin');
   }
 
   @override
@@ -74,33 +78,36 @@ class _ForgotPasswordState extends State<ForgotPassword> {
                   ),
                 ],
               ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                transitionBuilder: (child, animation) => FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.05, 0),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
+              child: SingleChildScrollView(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0.05, 0),
+                        end: Offset.zero,
+                      ).animate(animation),
+                      child: child,
+                    ),
                   ),
+                  child: _step == 0
+                      ? _EmailStep(
+                          key: const ValueKey(0),
+                          onSubmitted: _onEmailSubmitted,
+                        )
+                      : _step == 1
+                          ? _OtpStep(
+                              key: const ValueKey(1),
+                              email: _email,
+                              onVerified: _onOtpVerified,
+                            )
+                          : _ResetStep(
+                              key: const ValueKey(2),
+                              resetToken: _resetToken,
+                              onComplete: _onResetComplete,
+                            ),
                 ),
-                child: _step == 0
-                    ? _EmailStep(
-                        key: const ValueKey(0),
-                        onSubmitted: _onEmailSubmitted,
-                      )
-                    : _step == 1
-                        ? _OtpStep(
-                            key: const ValueKey(1),
-                            email: _email,
-                            onVerified: _onOtpVerified,
-                          )
-                        : _ResetStep(
-                            key: const ValueKey(2),
-                            onComplete: _onResetComplete,
-                          ),
               ),
             ),
           ),
@@ -110,16 +117,16 @@ class _ForgotPasswordState extends State<ForgotPassword> {
   }
 }
 
-class _EmailStep extends StatefulWidget {
+class _EmailStep extends ConsumerStatefulWidget {
   final ValueChanged<String> onSubmitted;
 
   const _EmailStep({super.key, required this.onSubmitted});
 
   @override
-  State<_EmailStep> createState() => _EmailStepState();
+  ConsumerState<_EmailStep> createState() => _EmailStepState();
 }
 
-class _EmailStepState extends State<_EmailStep> {
+class _EmailStepState extends ConsumerState<_EmailStep> {
   final _emailController = TextEditingController();
   bool _isLoading = false;
 
@@ -137,15 +144,33 @@ class _EmailStepState extends State<_EmailStep> {
   Future<void> _submit() async {
     if (!_isValid) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    widget.onSubmitted(_emailController.text.trim());
+
+    try {
+      final email = _emailController.text.trim();
+      await ref
+          .read(authRepositoryProvider)
+          .requestPasswordResetOtp(email: email);
+
+      if (!mounted) return;
+      widget.onSubmitted(email);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(describeAuthError(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image.asset('assets/logo3.png', height: 48, width: 48),
@@ -215,7 +240,7 @@ class _EmailStepState extends State<_EmailStep> {
         ),
         const SizedBox(height: 20),
         GestureDetector(
-          onTap: () => Navigator.pop(context),
+          onTap: () => context.pop(),
           child: const Text(
             'Back To Sign In',
             style: TextStyle(
@@ -230,17 +255,17 @@ class _EmailStepState extends State<_EmailStep> {
   }
 }
 
-class _OtpStep extends StatefulWidget {
+class _OtpStep extends ConsumerStatefulWidget {
   final String email;
-  final VoidCallback onVerified;
+  final ValueChanged<String> onVerified;
 
   const _OtpStep({super.key, required this.email, required this.onVerified});
 
   @override
-  State<_OtpStep> createState() => _OtpStepState();
+  ConsumerState<_OtpStep> createState() => _OtpStepState();
 }
 
-class _OtpStepState extends State<_OtpStep> {
+class _OtpStepState extends ConsumerState<_OtpStep> {
   final List<TextEditingController> _controllers =
       List.generate(6, (_) => TextEditingController());
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
@@ -286,10 +311,52 @@ class _OtpStepState extends State<_OtpStep> {
   Future<void> _submit() async {
     if (!_isComplete) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    widget.onVerified();
+
+    try {
+      final resetToken = await ref
+          .read(authRepositoryProvider)
+          .verifyResetOtp(otp: _otp);
+
+      if (!mounted) return;
+      widget.onVerified(resetToken);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(describeAuthError(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resendOtp() async {
+    try {
+      await ref.read(authRepositoryProvider).requestPasswordResetOtp(
+            email: widget.email,
+          );
+      _startResendTimer();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('OTP resent successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(describeAuthError(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _onDigitChanged(int index, String value) {
@@ -304,6 +371,7 @@ class _OtpStepState extends State<_OtpStep> {
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image.asset('assets/logo3.png', height: 48, width: 48),
@@ -333,10 +401,7 @@ class _OtpStepState extends State<_OtpStep> {
                     padding: EdgeInsets.only(right: 6),
                     child: Text(
                       '—',
-                      style: TextStyle(
-                        fontSize: 18,
-                        color: Color(0xFFBDBDBD),
-                      ),
+                      style: TextStyle(fontSize: 18, color: Color(0xFFBDBDBD)),
                     ),
                   ),
                 ],
@@ -361,8 +426,7 @@ class _OtpStepState extends State<_OtpStep> {
                       contentPadding: EdgeInsets.zero,
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide:
-                            const BorderSide(color: Color(0xFFE0E0E0)),
+                        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -387,11 +451,9 @@ class _OtpStepState extends State<_OtpStep> {
               style: TextStyle(fontSize: 13, color: Color(0xFF9E9E9E)),
             ),
             GestureDetector(
-              onTap: _resendCountdown == 0 ? _startResendTimer : null,
+              onTap: _resendCountdown == 0 ? _resendOtp : null,
               child: Text(
-                _resendCountdown > 0
-                    ? 'Resend In ${_resendCountdown}s'
-                    : 'Resend',
+                _resendCountdown > 0 ? 'Resend In ${_resendCountdown}s' : 'Resend',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -441,16 +503,18 @@ class _OtpStepState extends State<_OtpStep> {
   }
 }
 
-class _ResetStep extends StatefulWidget {
+class _ResetStep extends ConsumerStatefulWidget {
+  final String resetToken;
   final VoidCallback onComplete;
 
-  const _ResetStep({super.key, required this.onComplete});
+  const _ResetStep(
+      {super.key, required this.resetToken, required this.onComplete});
 
   @override
-  State<_ResetStep> createState() => _ResetStepState();
+  ConsumerState<_ResetStep> createState() => _ResetStepState();
 }
 
-class _ResetStepState extends State<_ResetStep> {
+class _ResetStepState extends ConsumerState<_ResetStep> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _obscurePassword = true;
@@ -465,29 +529,56 @@ class _ResetStepState extends State<_ResetStep> {
   }
 
   bool get _hasMinLength => _passwordController.text.length >= 8;
+  bool get _hasMaxLength => _passwordController.text.length <= 20;
   bool get _hasUppercase => _passwordController.text.contains(RegExp(r'[A-Z]'));
   bool get _hasLowercase => _passwordController.text.contains(RegExp(r'[a-z]'));
+  bool get _hasNumber => _passwordController.text.contains(RegExp(r'[0-9]'));
   bool get _hasSpecial =>
-      _passwordController.text.contains(RegExp(r'[\$#!@%^&*]'));
+      _passwordController.text.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>_\-]'));
+
   bool get _passwordsMatch =>
       _passwordController.text == _confirmController.text &&
       _confirmController.text.isNotEmpty;
 
   bool get _isValid =>
-      _hasMinLength && _hasUppercase && _hasLowercase && _hasSpecial && _passwordsMatch;
+      _hasMinLength &&
+      _hasMaxLength &&
+      _hasUppercase &&
+      _hasLowercase &&
+      _hasNumber &&
+      _hasSpecial &&
+      _passwordsMatch;
 
   Future<void> _submit() async {
     if (!_isValid) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
-    if (!mounted) return;
-    setState(() => _isLoading = false);
-    widget.onComplete();
+
+    try {
+      await ref.read(authRepositoryProvider).resetPassword(
+            newPassword: _passwordController.text.trim(),
+            resetToken: widget.resetToken,
+          );
+
+      if (!mounted) return;
+      widget.onComplete();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(describeAuthError(e)),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Image.asset('assets/logo3.png', height: 48, width: 48),
@@ -537,8 +628,7 @@ class _ResetStepState extends State<_ResetStep> {
               color: const Color(0xFF9E9E9E),
               size: 20,
             ),
-            onPressed: () =>
-                setState(() => _obscureConfirm = !_obscureConfirm),
+            onPressed: () => setState(() => _obscureConfirm = !_obscureConfirm),
           ),
         ),
         const SizedBox(height: 20),
@@ -548,10 +638,14 @@ class _ResetStepState extends State<_ResetStep> {
         const SizedBox(height: 6),
         _ValidationRow(met: _hasLowercase, label: 'At least one lowercase'),
         const SizedBox(height: 6),
+        _ValidationRow(met: _hasNumber, label: 'At least one number'),
+        const SizedBox(height: 6),
         _ValidationRow(
           met: _hasSpecial,
           label: 'At least one special character "\$,#..."',
         ),
+        const SizedBox(height: 6),
+        _ValidationRow(met: _passwordsMatch, label: 'Passwords match'),
         const SizedBox(height: 28),
         SizedBox(
           width: double.infinity,
@@ -655,14 +749,9 @@ class _FloatingLabelField extends StatelessWidget {
       style: const TextStyle(fontSize: 14, color: Color(0xFF1A1A1A)),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(
-          color: Color(0xFF9E9E9E),
-          fontSize: 14,
-        ),
-        floatingLabelStyle: const TextStyle(
-          color: Color(0xFF3F2868),
-          fontSize: 12,
-        ),
+        labelStyle: const TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+        floatingLabelStyle:
+            const TextStyle(color: Color(0xFF3F2868), fontSize: 12),
         suffixIcon: suffixIcon,
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -672,8 +761,7 @@ class _FloatingLabelField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide:
-              const BorderSide(color: Color(0xFF3F2868), width: 1.5),
+          borderSide: const BorderSide(color: Color(0xFF3F2868), width: 1.5),
         ),
       ),
     );

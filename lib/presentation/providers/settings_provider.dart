@@ -116,6 +116,12 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
     _save();
   }
 
+  Future<void> clear() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    state = const SettingsState();
+  }
+
   void setFirstName(String v) { state = state.copyWith(firstName: v); _save(); }
   void setLastName(String v) { state = state.copyWith(lastName: v); _save(); }
   void setBabySex(String? v) { state = state.copyWith(babySex: v); _save(); }

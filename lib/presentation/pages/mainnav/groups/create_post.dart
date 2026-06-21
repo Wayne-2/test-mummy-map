@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 
 class CreatePost extends ConsumerStatefulWidget {
@@ -13,7 +14,9 @@ class CreatePost extends ConsumerStatefulWidget {
 
 class _CreatePostState extends ConsumerState<CreatePost> {
   final _postController = TextEditingController();
+  final bool _enablePolls = false; // TODO: Enable when backend supports polls
   bool _showPoll = false;
+  bool _isSubmitting = false;
 
   final List<TextEditingController> _pollOptions = [
     TextEditingController(),
@@ -29,15 +32,25 @@ class _CreatePostState extends ConsumerState<CreatePost> {
     super.dispose();
   }
 
-  void _submitPost() {
+  static const int _maxPollOptions = 12;
+  static const int _minPollOptions = 2;
+
+  void _addPollOption() {
+    if (_pollOptions.length >= _maxPollOptions) return;
+    setState(() => _pollOptions.add(TextEditingController()));
+  }
+
+  void _removePollOption(int index) {
+    if (_pollOptions.length <= _minPollOptions) return;
+    setState(() {
+      final removed = _pollOptions.removeAt(index);
+      removed.dispose();
+    });
+  }
+
+  Future<void> _submitPost() async {
     final text = _postController.text.trim();
     if (text.isEmpty) return;
-
-    final state = ref.read(groupsProvider);
-
-    final group = state.groups
-        .where((g) => g.id == widget.groupId)
-        .first;
 
     final pollOptions = _showPoll
         ? _pollOptions
@@ -47,30 +60,33 @@ class _CreatePostState extends ConsumerState<CreatePost> {
             .toList()
         : <PollOption>[];
 
-    final post = GroupPost(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      groupId: widget.groupId,
-      groupInitials: group.initials,
-      groupColor: group.avatarColor,
-      author: 'You',
-      group: group.name,
-      createdAt: DateTime.now(),
-      title: text,
-      body: '',
-      likes: 0,
-      type: _showPoll && pollOptions.isNotEmpty ? 'poll' : 'text',
-      pollOptions: pollOptions,
-      likedBy: const [],
-      postReplies: const [],
-    );
+    setState(() => _isSubmitting = true);
 
-    ref.read(groupsProvider.notifier).addPost(post);
-    Navigator.pop(context);
+    final success = await ref.read(groupsProvider.notifier).addPost(
+          groupId: widget.groupId,
+          title: '',
+          body: text,
+          pollOptions: pollOptions,
+        );
+
+    if (!mounted) return;
+    setState(() => _isSubmitting = false);
+
+    if (success) {
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not publish your post. Please try again.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isReady = _postController.text.trim().isNotEmpty;
+    final isReady = _postController.text.trim().isNotEmpty && !_isSubmitting;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -111,29 +127,67 @@ class _CreatePostState extends ConsumerState<CreatePost> {
 
             if (_showPoll)
               Column(
-                children: List.generate(_pollOptions.length, (i) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: TextField(
-                      controller: _pollOptions[i],
-                      decoration: InputDecoration(
-                        hintText: 'Option ${i + 1}',
+                children: [
+                  ...List.generate(_pollOptions.length, (i) {
+                    final canRemove = _pollOptions.length > _minPollOptions;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _pollOptions[i],
+                              onChanged: (_) => setState(() {}),
+                              decoration: InputDecoration(
+                                hintText: 'Option ${i + 1}',
+                              ),
+                            ),
+                          ),
+                          if (canRemove)
+                            IconButton(
+                              icon: const Icon(Icons.close,
+                                  size: 20, color: Color(0xFF9E9E9E)),
+                              onPressed: () => _removePollOption(i),
+                            ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (_pollOptions.length < _maxPollOptions)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 4),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: _addPollOption,
+                          icon: const Icon(Icons.add,
+                              size: 20, color: Color(0xFF3F2868)),
+                          label: const Text(
+                            'Add option',
+                            style: TextStyle(
+                                color: Color(0xFF3F2868),
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ),
                       ),
                     ),
-                  );
-                }),
+                ],
               ),
 
             Container(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.poll_outlined),
-                    onPressed: () {
-                      setState(() => _showPoll = !_showPoll);
-                    },
-                  ),
+                  const Spacer(),
+                  if (_enablePolls)
+                    IconButton(
+                      icon: const Icon(Icons.poll_outlined),
+                      onPressed: () {
+                        setState(() => _showPoll = !_showPoll);
+                      },
+                    ),
                 ],
               ),
             ),

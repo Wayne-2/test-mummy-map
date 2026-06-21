@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/providers/mood_track_provider.dart';
 
 class MoodSelector extends StatefulWidget {
   const MoodSelector({super.key});
@@ -145,7 +147,7 @@ class _MoodSelectorState extends State<MoodSelector> {
   }
 }
 
-class _MoodSheet extends StatefulWidget {
+class _MoodSheet extends ConsumerStatefulWidget {
   final Map<String, String> mood;
   final String message;
   final VoidCallback onSubmitted;
@@ -157,10 +159,10 @@ class _MoodSheet extends StatefulWidget {
   });
 
   @override
-  State<_MoodSheet> createState() => _MoodSheetState();
+  ConsumerState<_MoodSheet> createState() => _MoodSheetState();
 }
 
-class _MoodSheetState extends State<_MoodSheet> {
+class _MoodSheetState extends ConsumerState<_MoodSheet> {
   final _controller = TextEditingController();
   bool _isLoading = false;
 
@@ -175,11 +177,23 @@ class _MoodSheetState extends State<_MoodSheet> {
   Future<void> _submit() async {
     if (!_canSubmit) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 2));
+    final ok = await ref.read(moodTrackProvider.notifier).logMood(
+          uiLabel: widget.mood['label']!,
+          notes: _controller.text.trim(),
+        );
     if (!mounted) return;
     setState(() => _isLoading = false);
-    widget.onSubmitted();
-    Navigator.pop(context);
+    if (ok) {
+      widget.onSubmitted();
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save your mood. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   List<TextSpan> _parseMessage(String message) {

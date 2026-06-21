@@ -11,7 +11,7 @@ class CreateGroup extends ConsumerStatefulWidget {
 
 class _CreateGroupState extends ConsumerState<CreateGroup> {
   final _nameController = TextEditingController();
-  final _descriptionController = TextEditingController();
+  final _tagsController = TextEditingController();
   bool _isPublic = true;
   int _selectedColor = 0xFF3F2868;
   bool _isLoading = false;
@@ -30,27 +30,42 @@ class _CreateGroupState extends ConsumerState<CreateGroup> {
   @override
   void dispose() {
     _nameController.dispose();
-    _descriptionController.dispose();
+    _tagsController.dispose();
     super.dispose();
   }
 
-  bool get _isValid =>
-      _nameController.text.trim().isNotEmpty &&
-      _descriptionController.text.trim().isNotEmpty;
+  bool get _isValid => _nameController.text.trim().isNotEmpty;
 
   Future<void> _createGroup() async {
     if (!_isValid) return;
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    ref.read(groupsProvider.notifier).createGroup(
+
+    final tags = _tagsController.text
+        .split(',')
+        .map((t) => t.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+
+    final success = await ref.read(groupsProvider.notifier).createGroup(
           name: _nameController.text.trim(),
-          description: _descriptionController.text.trim(),
+          tags: tags,
           isPublic: _isPublic,
-          avatarColor: _selectedColor,
         );
+
     if (!mounted) return;
     setState(() => _isLoading = false);
-    Navigator.pop(context);
+
+    if (success) {
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Could not create the group. The name may already be taken.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   @override
@@ -159,19 +174,22 @@ class _CreateGroupState extends ConsumerState<CreateGroup> {
                       decoration: _inputDecoration('e.g. November Moms 2025'),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Description',
+                    const Text('Tags',
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF1A1A1A))),
                     const SizedBox(height: 8),
                     TextField(
-                      controller: _descriptionController,
-                      maxLines: 3,
+                      controller: _tagsController,
                       onChanged: (_) => setState(() {}),
                       decoration: _inputDecoration(
-                          'What is this group about?'),
+                          'e.g. health, first-trimester, lagos'),
                     ),
+                    const SizedBox(height: 6),
+                    const Text('Separate tags with commas (optional)',
+                        style: TextStyle(
+                            fontSize: 12, color: Color(0xFF9E9E9E))),
                     const SizedBox(height: 20),
                     const Text('Privacy',
                         style: TextStyle(

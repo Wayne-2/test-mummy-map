@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/post_detail.dart';
-import 'package:mummymap/presentation/pages/mainnav/groups/create_post.dart';
 
 class PostCard extends ConsumerWidget {
   final GroupPost post;
@@ -17,6 +17,8 @@ class PostCard extends ConsumerWidget {
         );
     final isBookmarked =
         ref.watch(groupsProvider).isBookmarked(livePost.id);
+    final isLikedByMe =
+        ref.read(groupsProvider.notifier).isLikedByMe(livePost);
 
     return GestureDetector(
       onTap: () => Navigator.push(
@@ -113,11 +115,11 @@ class PostCard extends ConsumerWidget {
                   child: Row(
                     children: [
                       Icon(
-                        livePost.isLikedByMe
+                        isLikedByMe
                             ? Icons.favorite
                             : Icons.favorite_outline,
                         size: 20,
-                        color: livePost.isLikedByMe
+                        color: isLikedByMe
                             ? Colors.red
                             : Colors.grey.shade500,
                       ),
@@ -125,7 +127,7 @@ class PostCard extends ConsumerWidget {
                       Text('${livePost.likes}',
                           style: TextStyle(
                               fontSize: 13,
-                              color: livePost.isLikedByMe
+                              color: isLikedByMe
                                   ? Colors.red
                                   : Colors.grey.shade500)),
                     ],
@@ -252,6 +254,15 @@ class PostCard extends ConsumerWidget {
                   style: TextStyle(color: Colors.red)),
               onTap: () => Navigator.pop(context),
             ),
+            if (ref.read(groupsProvider.notifier).isMyPost(post))
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete post', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  ref.read(groupsProvider.notifier).deletePost(post.id);
+                  Navigator.pop(context);
+                },
+              ),
           ],
         ),
       ),

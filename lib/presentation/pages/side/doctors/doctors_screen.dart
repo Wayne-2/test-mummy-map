@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/doctor_model.dart';
+import 'package:mummymap/presentation/providers/doctors_provider.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctors_list_screen.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctor_detail_screen.dart';
+import 'package:mummymap/presentation/pages/side/doctors/minor%20screens/appointment_detail_screen.dart';
 
-class DoctorsScreen extends StatefulWidget {
+class DoctorsScreen extends ConsumerStatefulWidget {
   const DoctorsScreen({super.key});
 
   @override
-  State<DoctorsScreen> createState() => _DoctorsScreenState();
+  ConsumerState<DoctorsScreen> createState() => _DoctorsScreenState();
 }
 
-class _DoctorsScreenState extends State<DoctorsScreen>
+class _DoctorsScreenState extends ConsumerState<DoctorsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
@@ -28,6 +31,8 @@ class _DoctorsScreenState extends State<DoctorsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final state = ref.watch(doctorsProvider);
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
@@ -52,14 +57,26 @@ class _DoctorsScreenState extends State<DoctorsScreen>
               ],
             ),
             Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: const [
-                  _DoctorsTab(),
-                  _AppointmentsTab(),
-                  _HistoryTab(),
-                ],
-              ),
+              child: state.isLoading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF3F2868),
+                      ),
+                    )
+                  : state.errorMessage != null
+                      ? _ErrorState(
+                          message: state.errorMessage!,
+                          onRetry: () =>
+                              ref.read(doctorsProvider.notifier).refresh(),
+                        )
+                      : TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _DoctorsTab(state: state),
+                            _AppointmentsTab(appointments: state.scheduled),
+                            _HistoryTab(appointments: state.history),
+                          ],
+                        ),
             ),
           ],
         ),
@@ -82,7 +99,8 @@ class _DoctorsScreenState extends State<DoctorsScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset('assets/logo3.png', height: 28, width: 28,
-                  errorBuilder: (_, __, ___) => const SizedBox(width: 28, height: 28)),
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox(width: 28, height: 28)),
               const SizedBox(width: 8),
               RichText(
                 text: const TextSpan(
@@ -120,7 +138,9 @@ class _DoctorsScreenState extends State<DoctorsScreen>
 }
 
 class _DoctorsTab extends StatelessWidget {
-  const _DoctorsTab();
+  final DoctorsState state;
+
+  const _DoctorsTab({required this.state});
 
   @override
   Widget build(BuildContext context) {
@@ -160,9 +180,9 @@ class _DoctorsTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          kUpcomingAppointments.isEmpty
-              ? _EmptySchedule()
-              : _UpcomingCard(appointment: kUpcomingAppointments.first),
+          state.upcoming.isEmpty
+              ? const _EmptySchedule()
+              : _UpcomingCard(appointment: state.upcoming.first),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -193,7 +213,7 @@ class _DoctorsTab extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          ...kDoctors.take(2).map((d) => _TopDoctorCard(doctor: d)),
+          ...state.topDoctors.map((d) => _TopDoctorCard(doctor: d)),
           const SizedBox(height: 24),
         ],
       ),
@@ -202,6 +222,8 @@ class _DoctorsTab extends StatelessWidget {
 }
 
 class _EmptySchedule extends StatelessWidget {
+  const _EmptySchedule();
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -409,7 +431,8 @@ class _TopDoctorCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
-                  _StarRating(rating: doctor.rating, reviewCount: doctor.reviewCount),
+                  _StarRating(
+                      rating: doctor.rating, reviewCount: doctor.reviewCount),
                 ],
               ),
             ),
@@ -463,7 +486,9 @@ class _TopDoctorCard extends StatelessWidget {
 }
 
 class _AppointmentsTab extends StatelessWidget {
-  const _AppointmentsTab();
+  final List<DoctorAppointment> appointments;
+
+  const _AppointmentsTab({required this.appointments});
 
   @override
   Widget build(BuildContext context) {
@@ -499,13 +524,13 @@ class _AppointmentsTab extends StatelessWidget {
                   border: Border.all(color: const Color(0xFFE0E0E0)),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Row(
+                child: const Row(
                   children: [
-                    const Text('Today',
+                    Text('Today',
                         style: TextStyle(
                             fontSize: 13, color: Color(0xFF1A1A1A))),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.keyboard_arrow_down,
+                    SizedBox(width: 4),
+                    Icon(Icons.keyboard_arrow_down,
                         size: 16, color: Color(0xFF1A1A1A)),
                   ],
                 ),
@@ -514,14 +539,14 @@ class _AppointmentsTab extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: kScheduledAppointments.isEmpty
+          child: appointments.isEmpty
               ? const _EmptyAppointments(
                   message: 'No scheduled appointments')
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: kScheduledAppointments.length,
+                  itemCount: appointments.length,
                   itemBuilder: (context, index) => _AppointmentListCard(
-                    appointment: kScheduledAppointments[index],
+                    appointment: appointments[index],
                   ),
                 ),
         ),
@@ -531,7 +556,9 @@ class _AppointmentsTab extends StatelessWidget {
 }
 
 class _HistoryTab extends StatelessWidget {
-  const _HistoryTab();
+  final List<DoctorAppointment> appointments;
+
+  const _HistoryTab({required this.appointments});
 
   @override
   Widget build(BuildContext context) {
@@ -539,16 +566,17 @@ class _HistoryTab extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: _SearchBar(hint: 'Name, category, location...', onFilterTap: () {}),
+          child: _SearchBar(
+              hint: 'Name, category, location...', onFilterTap: () {}),
         ),
         Expanded(
-          child: kHistoryAppointments.isEmpty
+          child: appointments.isEmpty
               ? const _EmptyAppointments(message: 'No appointment history')
               : ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: kHistoryAppointments.length,
+                  itemCount: appointments.length,
                   itemBuilder: (context, index) => _AppointmentListCard(
-                    appointment: kHistoryAppointments[index],
+                    appointment: appointments[index],
                     showStatus: true,
                   ),
                 ),
@@ -569,87 +597,96 @@ class _AppointmentListCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFEEEEEE)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) =>
+              AppointmentDetailScreen(appointmentId: appointment.id),
+        ),
       ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(40),
-            child: Image.asset(
-              appointment.doctor.imagePath,
-              width: 60,
-              height: 60,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEEEEEE)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: Image.asset(
+                appointment.doctor.imagePath,
                 width: 60,
                 height: 60,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8D5F5),
-                  borderRadius: BorderRadius.circular(40),
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8D5F5),
+                    borderRadius: BorderRadius.circular(40),
+                  ),
+                  child: const Icon(Icons.person,
+                      color: Color(0xFF3F2868), size: 30),
                 ),
-                child: const Icon(Icons.person,
-                    color: Color(0xFF3F2868), size: 30),
               ),
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  appointment.doctor.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1A1A1A),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  showStatus
-                      ? appointment.doctor.specialty
-                      : '${appointment.doctor.specialty}  •  ${appointment.doctor.hospital}',
-                  style: const TextStyle(
-                      fontSize: 12, color: Color(0xFF9E9E9E)),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.calendar_today_outlined,
-                        size: 12, color: Color(0xFF9E9E9E)),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${appointment.date}  •  ${appointment.time}',
-                      style: const TextStyle(
-                          fontSize: 12, color: Color(0xFF9E9E9E)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    appointment.doctor.name,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1A1A1A),
                     ),
-                  ],
-                ),
-                if (showStatus) ...[
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    showStatus
+                        ? appointment.doctor.specialty
+                        : '${appointment.doctor.specialty}  •  ${appointment.doctor.hospital}',
+                    style: const TextStyle(
+                        fontSize: 12, color: Color(0xFF9E9E9E)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   const SizedBox(height: 6),
-                  _StatusBadge(status: appointment.status),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined,
+                          size: 12, color: Color(0xFF9E9E9E)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${appointment.date}  •  ${appointment.time}',
+                        style: const TextStyle(
+                            fontSize: 12, color: Color(0xFF9E9E9E)),
+                      ),
+                    ],
+                  ),
+                  if (showStatus) ...[
+                    const SizedBox(height: 6),
+                    _StatusBadge(status: appointment.status),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
-          _CallTypeIcon(callType: appointment.callType),
-        ],
+            _CallTypeIcon(callType: appointment.callType),
+          ],
+        ),
       ),
     );
   }
@@ -749,6 +786,43 @@ class _EmptyAppointments extends StatelessWidget {
               fontSize: 16,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1A1A1A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline,
+              size: 48, color: Color(0xFFBDBDBD)),
+          const SizedBox(height: 12),
+          Text(
+            message,
+            style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          TextButton(
+            onPressed: onRetry,
+            child: const Text(
+              'Retry',
+              style: TextStyle(
+                color: Color(0xFF3F2868),
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

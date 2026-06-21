@@ -1,35 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/track_models.dart';
+import 'package:mummymap/presentation/providers/weight_track_provider.dart';
 
-class WeightTrackingTab extends StatefulWidget {
+class WeightTrackingTab extends ConsumerStatefulWidget {
   const WeightTrackingTab({super.key});
 
   @override
-  State<WeightTrackingTab> createState() => _WeightTrackingTabState();
+  ConsumerState<WeightTrackingTab> createState() => _WeightTrackingTabState();
 }
 
-class _WeightTrackingTabState extends State<WeightTrackingTab> {
+class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
   bool _showChart = false;
-  List<WeightEntry> _entries = List.from(kWeightEntries);
 
-  double get _currentWeight =>
-      _entries.isEmpty ? kStartWeight : _entries.last.weightLb;
-
-  double get _gain => _currentWeight - kStartWeight;
+  int _computeWeek(DateTime date) {
+    final start = DateTime(date.year, 1, 1);
+    return ((date.difference(start).inDays) / 7).ceil();
+  }
 
   @override
   Widget build(BuildContext context) {
+    final weightState = ref.watch(weightTrackProvider);
+    final entries = weightState.entries
+        .map((e) => WeightEntry(
+              date: e.recordedAt,
+              week: e.week ?? _computeWeek(e.recordedAt),
+              weightLb: double.parse(e.weightLb.toStringAsFixed(1)),
+            ))
+        .toList();
+
+    final currentWeight =
+        entries.isEmpty ? kStartWeight : entries.last.weightLb;
+    final gain = currentWeight - kStartWeight;
+
     return SingleChildScrollView(
       child: Column(
         children: [
           const SizedBox(height: 16),
           _buildViewToggle(),
           const SizedBox(height: 24),
-          _showChart ? _buildChart() : _buildDonut(),
+          _showChart
+              ? _buildChart(entries)
+              : _buildDonut(gain, entries.isNotEmpty),
           const SizedBox(height: 24),
-          _buildStatRow(),
+          _buildStatRow(currentWeight),
           const SizedBox(height: 24),
-          if (!_showChart) _buildWeightTable(),
+          if (!_showChart) _buildWeightTable(entries),
           const SizedBox(height: 40),
           _buildAddButton(context),
           const SizedBox(height: 40),
@@ -68,8 +84,8 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
     );
   }
 
-  Widget _buildDonut() {
-    final progress = (_gain.abs() / (kTargetWeight - kStartWeight))
+  Widget _buildDonut(double gain, bool hasData) {
+    final progress = (gain.abs() / (kTargetWeight - kStartWeight))
         .clamp(0.0, 1.0);
 
     return Center(
@@ -77,15 +93,15 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
         width: 180,
         height: 180,
         child: CustomPaint(
-          painter: _DonutPainter(progress: progress, hasData: _entries.isNotEmpty),
+          painter: _DonutPainter(progress: progress, hasData: hasData),
           child: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  _gain == 0
+                  gain == 0
                       ? '0'
-                      : '${_gain > 0 ? '+' : ''}${_gain.toStringAsFixed(1)}',
+                      : '${gain > 0 ? '+' : ''}${gain.toStringAsFixed(1)}',
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -108,7 +124,7 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
     );
   }
 
-  Widget _buildChart() {
+  Widget _buildChart(List<WeightEntry> entries) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -122,7 +138,7 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
           SizedBox(
             height: 300,
             child: CustomPaint(
-              painter: _WeightChartPainter(entries: _entries),
+              painter: _WeightChartPainter(entries: entries),
               child: const SizedBox.expand(),
             ),
           ),
@@ -147,14 +163,14 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
     );
   }
 
-  Widget _buildStatRow() {
+  Widget _buildStatRow(double currentWeight) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
           _StatCol(label: 'START WEIGHT', value: '${kStartWeight} LB'),
           const _VertDivider(),
-          _StatCol(label: 'CURRENT WEIGHT', value: '${_currentWeight.toStringAsFixed(1)} LB'),
+          _StatCol(label: 'CURRENT WEIGHT', value: '${currentWeight.toStringAsFixed(1)} LB'),
           const _VertDivider(),
           _StatCol(label: 'TARGET WEIGHT', value: '${kTargetWeight} LB'),
         ],
@@ -162,7 +178,7 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
     );
   }
 
-  Widget _buildWeightTable() {
+  Widget _buildWeightTable(List<WeightEntry> entries) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -183,7 +199,7 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
               ],
             ),
           ),
-          ..._entries.map((e) {
+          ...entries.map((e) {
             final change = e.weightLb - kStartWeight;
             final changeStr =
                 '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)}LB';
@@ -269,24 +285,28 @@ class _WeightTrackingTabState extends State<WeightTrackingTab> {
     showDialog(
       context: context,
       builder: (_) => _AddWeightDialog(
-        onAdd: (wholePart, decimalPart, date) {
+        onAdd: (wholePart, decimalPart, date) async {
           final weight = wholePart + decimalPart / 10;
-          setState(() {
-            _entries.add(WeightEntry(
-              date: date,
-              week: _computeWeek(date),
-              weightLb: weight,
-            ));
-          });
+          final error = await ref.read(weightTrackProvider.notifier).addWeightLb(
+                weight,
+                date,
+                week: _computeWeek(date),
+              );
+          if (error != null && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(error),
+                backgroundColor: Colors.red,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         },
       ),
     );
   }
 
-  int _computeWeek(DateTime date) {
-    final start = DateTime(date.year, 1, 1);
-    return ((date.difference(start).inDays) / 7).ceil();
-  }
+
 
   String _monthName(int month) {
     const months = [

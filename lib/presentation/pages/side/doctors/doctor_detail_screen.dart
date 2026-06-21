@@ -1,20 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/doctor_model.dart';
+import 'package:mummymap/presentation/providers/doctors_provider.dart';
+import 'package:mummymap/presentation/pages/side/doctors/minor%20screens/all_reviews_screen.dart';
 
-class DoctorDetailScreen extends StatefulWidget {
+class DoctorDetailScreen extends ConsumerStatefulWidget {
   final Doctor doctor;
 
   const DoctorDetailScreen({super.key, required this.doctor});
 
   @override
-  State<DoctorDetailScreen> createState() => _DoctorDetailScreenState();
+  ConsumerState<DoctorDetailScreen> createState() =>
+      _DoctorDetailScreenState();
 }
 
-class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
+class _DoctorDetailScreenState extends ConsumerState<DoctorDetailScreen> {
   int _selectedDayIndex = 3;
   String? _selectedTime;
   String _selectedCallType = 'Audio';
   bool _aboutExpanded = false;
+
+  List<DoctorReview> _reviews = const [];
+  bool _reviewsLoading = true;
 
   final List<Map<String, String>> _days = [
     {'label': 'Sat', 'date': '12'},
@@ -45,8 +52,25 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   };
 
   @override
+  void initState() {
+    super.initState();
+    _loadReviews();
+  }
+
+  Future<void> _loadReviews() async {
+    final reviews =
+        await ref.read(doctorsProvider.notifier).loadReviews(widget.doctor.id);
+    if (!mounted) return;
+    setState(() {
+      _reviews = reviews;
+      _reviewsLoading = false;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final isBooking = ref.watch(doctorsProvider).isBooking;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -118,22 +142,35 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () => _showBookingConfirmation(context),
+                onPressed: isBooking
+                    ? null
+                    : () => _showBookingConfirmation(context),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),
+                  disabledBackgroundColor:
+                      const Color(0xFF3F2868).withOpacity(0.5),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
                   elevation: 0,
                 ),
-                child: Text(
-                  'Book Appointment (${widget.doctor.fee})',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white,
-                  ),
-                ),
+                child: isBooking
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.5,
+                        ),
+                      )
+                    : Text(
+                        'Book Appointment (${widget.doctor.fee})',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -630,7 +667,15 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               ),
             ),
             GestureDetector(
-              onTap: () {},
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AllReviewsScreen(
+                    doctorId: widget.doctor.id,
+                    reviewCount: widget.doctor.reviewCount,
+                  ),
+                ),
+              ),
               child: const Text(
                 'See All',
                 style: TextStyle(
@@ -643,7 +688,22 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
           ],
         ),
         const SizedBox(height: 14),
-        ...kDoctorReviews.map((r) => _ReviewCard(review: r)),
+        if (_reviewsLoading)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Color(0xFF3F2868),
+                  strokeWidth: 2.5,
+                ),
+              ),
+            ),
+          )
+        else
+          ..._reviews.map((r) => _ReviewCard(review: r)),
       ],
     );
   }
@@ -654,7 +714,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => Padding(
+      builder: (sheetContext) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -677,41 +737,24 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            _ConfirmRow(
-              label: 'Doctor',
-              value: widget.doctor.name,
-            ),
+            _ConfirmRow(label: 'Doctor', value: widget.doctor.name),
             _ConfirmRow(
               label: 'Date',
-              value: _days[_selectedDayIndex]['label']! +
-                  ' ${_days[_selectedDayIndex]['date']}',
+              value:
+                  '${_days[_selectedDayIndex]['label']} ${_days[_selectedDayIndex]['date']}',
             ),
             _ConfirmRow(
               label: 'Time',
               value: _selectedTime ?? 'Not selected',
             ),
-            _ConfirmRow(
-              label: 'Call Type',
-              value: _selectedCallType,
-            ),
-            _ConfirmRow(
-              label: 'Fee',
-              value: widget.doctor.fee,
-            ),
+            _ConfirmRow(label: 'Call Type', value: _selectedCallType),
+            _ConfirmRow(label: 'Fee', value: widget.doctor.fee),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Appointment booked successfully!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                },
+                onPressed: () => _confirmBooking(sheetContext),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),
                   shape: RoundedRectangleBorder(
@@ -734,6 +777,29 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmBooking(BuildContext sheetContext) async {
+    Navigator.pop(sheetContext);
+    final success = await ref.read(doctorsProvider.notifier).book(
+          doctorId: widget.doctor.id,
+          date:
+              '${_days[_selectedDayIndex]['label']} ${_days[_selectedDayIndex]['date']}',
+          time: _selectedTime ?? '',
+          callType: _selectedCallType,
+        );
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success
+            ? 'Appointment booked successfully!'
+            : 'Failed to book appointment. Please try again.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    if (success) {
+      ref.read(doctorsProvider.notifier).resetBookingSuccess();
+    }
   }
 }
 

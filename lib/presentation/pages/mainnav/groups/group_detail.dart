@@ -1,19 +1,59 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/community_rules.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/widgets/post_card.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/create_post.dart';
 
-class GroupDetail extends ConsumerWidget {
+class GroupDetail extends ConsumerStatefulWidget {
   final String groupId;
 
   const GroupDetail({super.key, required this.groupId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GroupDetail> createState() => _GroupDetailState();
+}
+
+class _GroupDetailState extends ConsumerState<GroupDetail> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(groupsProvider.notifier).loadPostsForGroup(widget.groupId);
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(groupsProvider.notifier).loadMorePostsForGroup(widget.groupId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final state = ref.watch(groupsProvider);
-    final group = state.groups.firstWhere((g) => g.id == groupId);
+    final groupId = widget.groupId;
+    final matches = state.groups.where((g) => g.id == groupId).toList();
+    if (matches.isEmpty) {
+      return const Scaffold(
+        backgroundColor: Colors.white,
+        body: Center(
+          child: CircularProgressIndicator(color: Color(0xFF3F2868)),
+        ),
+      );
+    }
+    final group = matches.first;
     final posts = state.postsForGroup(groupId);
 
     return Scaffold(
@@ -30,6 +70,7 @@ class GroupDetail extends ConsumerWidget {
             )
           : null,
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverToBoxAdapter(
             child: _GroupHeader(
@@ -325,7 +366,6 @@ class _GroupHeader extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 10),
-                // MEMBER AVATARS ROW
                 Row(
                   children: [
                     ...List.generate(

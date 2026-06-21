@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_text_field.dart';
 import 'package:mummymap/presentation/pages/profile_setup/widgets/setup_dropdown.dart';
 import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
+import 'package:mummymap/presentation/providers/profile_setup_draft_provider.dart';
 
 class GetToKnowYou extends ConsumerStatefulWidget {
   final VoidCallback onComplete;
@@ -19,6 +20,7 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
 
   final _nameController = TextEditingController();
   final _dobController = TextEditingController();
+  DateTime? _selectedDob;
   String? _firstTimeMum;
   String? _bloodGroup;
 
@@ -36,6 +38,11 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
 
   void _nextSub() async {
     if (_subIndex == 0) {
+      final draft = ref.read(profileSetupDraftProvider.notifier);
+      draft.setName(_nameController.text);
+      if (_selectedDob != null) draft.setDateOfBirth(_selectedDob!);
+      draft.setBloodGroup(_bloodGroup);
+      draft.setFirstChild(_firstTimeMum);
       setState(() => _subIndex = 1);
     } else {
       if (_selectedDate != null && _basedOn != null) {
@@ -43,6 +50,10 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
               method: _basedOn!,
               date: _selectedDate!,
             );
+        final dueDate = ref.read(pregnancyProvider)?.dueDate;
+        if (dueDate != null) {
+          ref.read(profileSetupDraftProvider.notifier).setDueDate(dueDate);
+        }
       }
       widget.onComplete();
     }
@@ -57,6 +68,7 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
       builder: (context, child) => _datePickerTheme(context, child),
     );
     if (picked != null) {
+      setState(() => _selectedDob = picked);
       _dobController.text = DateFormat('MMMM d, yyyy').format(picked);
     }
   }
@@ -101,10 +113,8 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
           dobController: _dobController,
           firstTimeMum: _firstTimeMum,
           bloodGroup: _bloodGroup,
-          onFirstTimeMumChanged: (val) =>
-              setState(() => _firstTimeMum = val),
-          onBloodGroupChanged: (val) =>
-              setState(() => _bloodGroup = val),
+          onFirstTimeMumChanged: (val) => setState(() => _firstTimeMum = val),
+          onBloodGroupChanged: (val) => setState(() => _bloodGroup = val),
           onPickDob: _pickDob,
           onContinue: _nextSub,
         ),
@@ -192,9 +202,7 @@ class _PersonalInfo extends StatelessWidget {
           SetupDropdown(
             value: bloodGroup,
             hintText: 'Blood Group',
-            items: const [
-              'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
-            ],
+            items: const ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
             onChanged: onBloodGroupChanged,
           ),
           const Spacer(),
@@ -279,11 +287,7 @@ class _DueDate extends StatelessWidget {
           const SizedBox(height: 8),
           const Text(
             'Select how you want to calculate your due date, you can change it any time no worries.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xFF9E9E9E),
-              height: 1.5,
-            ),
+            style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E), height: 1.5),
           ),
           const SizedBox(height: 32),
           SetupDropdown(
@@ -312,8 +316,7 @@ class _DueDate extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               _helperText,
-              style: const TextStyle(
-                  fontSize: 12, color: Color(0xFF9E9E9E)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
             ),
           ],
           const Spacer(),

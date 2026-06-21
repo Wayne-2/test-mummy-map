@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:mummymap/presentation/pages/intro/getstarted.dart';
-import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
-import 'package:mummymap/presentation/pages/mainnav/main_nav.dart';
+import 'package:mummymap/domain/repositories/auth_repository.dart';
+import 'package:go_router/go_router.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,27 +19,25 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _navigate() async {
-    await Future.delayed(const Duration(seconds: 4));
     if (!mounted) return;
+
+    const storage = FlutterSecureStorage();
+    final refreshToken =
+        await storage.read(key: AuthStorageKeys.refreshToken);
+    final hasSession = refreshToken != null && refreshToken.isNotEmpty;
 
     final prefs = await SharedPreferences.getInstance();
-    final isLoggedIn = prefs.getBool('is_logged_in') ?? false;
-    final hasCompletedSetup = prefs.getBool('has_completed_setup') ?? false;
+    final hasCompletedSetup =
+        prefs.getBool('has_completed_setup') ?? false;
 
     if (!mounted) return;
 
-    if (!isLoggedIn) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const Getstarted()),
-      );
+    if (!hasSession) {
+      context.go('/get-started');
     } else if (!hasCompletedSetup) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const ProfileSetup()),
-      );
+      context.go('/profile-setup');
     } else {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainNav()),
-      );
+      context.go('/home');
     }
   }
 

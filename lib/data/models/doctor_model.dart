@@ -1,3 +1,7 @@
+enum AppointmentStatus { scheduled, completed, declined }
+
+enum ChatSender { user, doctor }
+
 class Doctor {
   final String id;
   final String name;
@@ -30,6 +34,46 @@ class Doctor {
     required this.imagePath,
     this.callTypes = const ['Audio', 'Video'],
   });
+
+  factory Doctor.fromJson(Map<String, dynamic> json) {
+    return Doctor(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      specialty: json['specialty'] as String,
+      hospital: json['hospital'] as String,
+      rating: (json['rating'] as num).toDouble(),
+      reviewCount: json['review_count'] as int,
+      patients: json['patients'] as int,
+      experience: json['experience'] as String,
+      fee: json['fee'] as String,
+      isOnline: json['is_online'] as bool,
+      about: json['about'] as String,
+      workingHours: json['working_hours'] as String,
+      imagePath: json['image_path'] as String,
+      callTypes: json['call_types'] == null
+          ? const ['Audio', 'Video']
+          : List<String>.from(json['call_types'] as List),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'specialty': specialty,
+      'hospital': hospital,
+      'rating': rating,
+      'review_count': reviewCount,
+      'patients': patients,
+      'experience': experience,
+      'fee': fee,
+      'is_online': isOnline,
+      'about': about,
+      'working_hours': workingHours,
+      'image_path': imagePath,
+      'call_types': callTypes,
+    };
+  }
 }
 
 class DoctorReview {
@@ -46,6 +90,72 @@ class DoctorReview {
     required this.body,
     required this.date,
   });
+
+  factory DoctorReview.fromJson(Map<String, dynamic> json) {
+    return DoctorReview(
+      author: json['author'] as String,
+      avatarPath: json['avatar_path'] as String,
+      rating: (json['rating'] as num).toDouble(),
+      body: json['body'] as String,
+      date: json['date'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'author': author,
+      'avatar_path': avatarPath,
+      'rating': rating,
+      'body': body,
+      'date': date,
+    };
+  }
+}
+
+class ChatMessage {
+  final ChatSender sender;
+  final String authorName;
+  final String avatarPath;
+  final String timeLabel;
+  final String? text;
+  final String? attachmentName;
+  final String? attachmentSize;
+
+  const ChatMessage({
+    required this.sender,
+    required this.authorName,
+    required this.avatarPath,
+    required this.timeLabel,
+    this.text,
+    this.attachmentName,
+    this.attachmentSize,
+  });
+
+  bool get hasAttachment => attachmentName != null;
+
+  factory ChatMessage.fromJson(Map<String, dynamic> json) {
+    return ChatMessage(
+      sender: ChatSender.values.byName(json['sender'] as String),
+      authorName: json['author_name'] as String,
+      avatarPath: json['avatar_path'] as String,
+      timeLabel: json['time_label'] as String,
+      text: json['text'] as String?,
+      attachmentName: json['attachment_name'] as String?,
+      attachmentSize: json['attachment_size'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'sender': sender.name,
+      'author_name': authorName,
+      'avatar_path': avatarPath,
+      'time_label': timeLabel,
+      'text': text,
+      'attachment_name': attachmentName,
+      'attachment_size': attachmentSize,
+    };
+  }
 }
 
 class DoctorAppointment {
@@ -55,6 +165,10 @@ class DoctorAppointment {
   final String time;
   final String callType;
   final AppointmentStatus status;
+  final String hoursSpent;
+  final String bookingFee;
+  final String chatWindowLabel;
+  final List<ChatMessage> messages;
 
   const DoctorAppointment({
     required this.id,
@@ -63,222 +177,67 @@ class DoctorAppointment {
     required this.time,
     required this.callType,
     required this.status,
+    this.hoursSpent = '',
+    this.bookingFee = '',
+    this.chatWindowLabel = '',
+    this.messages = const [],
   });
+
+  DoctorAppointment copyWith({
+    String? date,
+    String? time,
+    String? callType,
+    AppointmentStatus? status,
+    String? hoursSpent,
+    String? bookingFee,
+    String? chatWindowLabel,
+    List<ChatMessage>? messages,
+  }) {
+    return DoctorAppointment(
+      id: id,
+      doctor: doctor,
+      date: date ?? this.date,
+      time: time ?? this.time,
+      callType: callType ?? this.callType,
+      status: status ?? this.status,
+      hoursSpent: hoursSpent ?? this.hoursSpent,
+      bookingFee: bookingFee ?? this.bookingFee,
+      chatWindowLabel: chatWindowLabel ?? this.chatWindowLabel,
+      messages: messages ?? this.messages,
+    );
+  }
+
+  factory DoctorAppointment.fromJson(Map<String, dynamic> json) {
+    return DoctorAppointment(
+      id: json['id'] as String,
+      doctor: Doctor.fromJson(json['doctor'] as Map<String, dynamic>),
+      date: json['date'] as String,
+      time: json['time'] as String,
+      callType: json['call_type'] as String,
+      status: AppointmentStatus.values.byName(json['status'] as String),
+      hoursSpent: json['hours_spent'] as String? ?? '',
+      bookingFee: json['booking_fee'] as String? ?? '',
+      chatWindowLabel: json['chat_window_label'] as String? ?? '',
+      messages: json['messages'] == null
+          ? const []
+          : (json['messages'] as List)
+              .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+              .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'doctor': doctor.toJson(),
+      'date': date,
+      'time': time,
+      'call_type': callType,
+      'status': status.name,
+      'hours_spent': hoursSpent,
+      'booking_fee': bookingFee,
+      'chat_window_label': chatWindowLabel,
+      'messages': messages.map((e) => e.toJson()).toList(),
+    };
+  }
 }
-
-enum AppointmentStatus { scheduled, completed, declined }
-
-const kDoctors = [
-  Doctor(
-    id: '1',
-    name: 'Dr. Adewale Tunde',
-    specialty: 'Obstetrician & Gynecologist',
-    hospital: 'Mediterian Hospital',
-    rating: 4.5,
-    reviewCount: 412,
-    patients: 1200,
-    experience: '8 yr+',
-    fee: '₦5,900',
-    isOnline: true,
-    about:
-        'Dr. Tunde is a top specialist at Mediterian Hospital based in Lagos. He has achieved several awards and recognition in HCSS, NCEE...',
-    workingHours: 'Mon - Sat  •  8:30AM - 9:00PM',
-    imagePath: 'assets/doctors/adewale.png',
-  ),
-  Doctor(
-    id: '2',
-    name: 'Dr. Kim-Taeung Shawn',
-    specialty: 'Obstetrician',
-    hospital: 'Mediterian Hospital',
-    rating: 4.5,
-    reviewCount: 332,
-    patients: 1000,
-    experience: '5 yr+',
-    fee: '₦5,900',
-    isOnline: true,
-    about:
-        'Doctor Kim is a top specialist at Fediteriano Hospital based in London. He has achieved several awards and recognition in HCSS, NCEE...',
-    workingHours: 'Mon - Sat  •  8:30AM - 9:00PM',
-    imagePath: 'assets/doctors/kim.png',
-  ),
-  Doctor(
-    id: '3',
-    name: 'Dr. Sharim Mohaammed',
-    specialty: 'Gynecologist',
-    hospital: 'South Haven Hospital',
-    rating: 3.5,
-    reviewCount: 198,
-    patients: 870,
-    experience: '6 yr+',
-    fee: '₦5,900',
-    isOnline: false,
-    about:
-        'Dr. Mohaammed is a specialist in gynecology at South Haven Hospital. Known for compassionate care and thorough consultations.',
-    workingHours: 'Mon - Fri  •  9:00AM - 6:00PM',
-    imagePath: 'assets/doctors/sharim.png',
-  ),
-  Doctor(
-    id: '4',
-    name: 'Dr. Kassandra Han',
-    specialty: 'Obstetrician',
-    hospital: 'Fediteriano Hospital',
-    rating: 4.5,
-    reviewCount: 147,
-    patients: 640,
-    experience: '4 yr+',
-    fee: '₦5,900',
-    isOnline: true,
-    about:
-        'Dr. Han is an experienced obstetrician at Fediteriano Hospital with a focus on high-risk pregnancies and maternal health.',
-    workingHours: 'Mon - Sat  •  8:00AM - 8:00PM',
-    imagePath: 'assets/doctors/kassandra.png',
-  ),
-  Doctor(
-    id: '5',
-    name: 'Dr. David Utong-Abion',
-    specialty: 'Obstetrician',
-    hospital: 'Saving Lives Hospital',
-    rating: 5.0,
-    reviewCount: 289,
-    patients: 1100,
-    experience: '10 yr+',
-    fee: '₦5,900',
-    isOnline: true,
-    about:
-        'Dr. David is one of the most experienced obstetricians at Saving Lives Hospital, known for exceptional patient outcomes.',
-    workingHours: 'Mon - Sat  •  7:30AM - 7:00PM',
-    imagePath: 'assets/doctors/david.png',
-  ),
-  Doctor(
-    id: '6',
-    name: 'Dr. Sharim Mohaammed',
-    specialty: 'Gynecologist',
-    hospital: 'South Haven Hospital',
-    rating: 3.5,
-    reviewCount: 210,
-    patients: 920,
-    experience: '6 yr+',
-    fee: '₦5,900',
-    isOnline: false,
-    about:
-        'Dr. Mohaammed brings years of gynecological expertise to South Haven Hospital, with a focus on preventive care.',
-    workingHours: 'Mon - Fri  •  9:00AM - 6:00PM',
-    imagePath: 'assets/doctors/sharim.png',
-  ),
-];
-
-const kDoctorReviews = [
-  DoctorReview(
-    author: 'Anita Raine',
-    avatarPath: 'assets/avatars/anita.png',
-    rating: 3.5,
-    body:
-        'I had a wonderful session with Dr. Kim. He was really honest, gave me insightful ideas on how to care of mys...',
-    date: '31 mins ago',
-  ),
-  DoctorReview(
-    author: 'Gracie James',
-    avatarPath: 'assets/avatars/gracie.png',
-    rating: 4.5,
-    body:
-        'This was truly a great experience. He gave me time to find perspective in things that mattered, to be prepared to ta...',
-    date: 'Aug 15',
-  ),
-  DoctorReview(
-    author: 'Stacie Flein Grace',
-    avatarPath: 'assets/avatars/stacie.png',
-    rating: 3.5,
-    body:
-        'I had a wonderful session with Dr. Kim. He was really honest, gave me insightful ideas on how to care of mys...',
-    date: 'Aug 18',
-  ),
-  DoctorReview(
-    author: 'Johanna Layina Ohioana',
-    avatarPath: 'assets/avatars/johanna.png',
-    rating: 4.5,
-    body:
-        'This was truly a great experience. He gave me time to find perspective in things that mattered, to be prepared to ta...',
-    date: 'Aug 15',
-  ),
-];
-
-final kUpcomingAppointments = [
-  DoctorAppointment(
-    id: 'a1',
-    doctor: kDoctors[0],
-    date: 'Sep 29',
-    time: '9:00PM',
-    callType: 'Video',
-    status: AppointmentStatus.scheduled,
-  ),
-];
-
-final kScheduledAppointments = [
-  DoctorAppointment(
-    id: 's1',
-    doctor: kDoctors[1],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Audio',
-    status: AppointmentStatus.scheduled,
-  ),
-  DoctorAppointment(
-    id: 's2',
-    doctor: kDoctors[2],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Video',
-    status: AppointmentStatus.scheduled,
-  ),
-  DoctorAppointment(
-    id: 's3',
-    doctor: kDoctors[3],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Audio',
-    status: AppointmentStatus.scheduled,
-  ),
-  DoctorAppointment(
-    id: 's4',
-    doctor: kDoctors[4],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Message',
-    status: AppointmentStatus.scheduled,
-  ),
-];
-
-final kHistoryAppointments = [
-  DoctorAppointment(
-    id: 'h1',
-    doctor: kDoctors[1],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Audio',
-    status: AppointmentStatus.completed,
-  ),
-  DoctorAppointment(
-    id: 'h2',
-    doctor: kDoctors[3],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Audio',
-    status: AppointmentStatus.declined,
-  ),
-  DoctorAppointment(
-    id: 'h3',
-    doctor: kDoctors[2],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Video',
-    status: AppointmentStatus.completed,
-  ),
-  DoctorAppointment(
-    id: 'h4',
-    doctor: kDoctors[4],
-    date: '16th July, 2025',
-    time: '9:00AM',
-    callType: 'Video',
-    status: AppointmentStatus.completed,
-  ),
-];

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
-import 'package:mummymap/presentation/pages/mainnav/groups/create_post.dart';
 
 class PostDetail extends ConsumerStatefulWidget {
   final GroupPost post;
@@ -95,6 +95,16 @@ class _PostDetailState extends ConsumerState<PostDetail> {
                   style: TextStyle(color: Colors.red)),
               onTap: () => Navigator.pop(context),
             ),
+            if (ref.read(groupsProvider.notifier).isMyPost(post))
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete post', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  ref.read(groupsProvider.notifier).deletePost(post.id);
+                  Navigator.pop(context);
+                  Navigator.pop(context); // Go back to feed
+                },
+              ),
           ],
         ),
       ),
@@ -109,6 +119,8 @@ class _PostDetailState extends ConsumerState<PostDetail> {
       orElse: () => widget.post,
     );
     final isBookmarked = state.isBookmarked(livePost.id);
+    final isLikedByMe =
+        ref.read(groupsProvider.notifier).isLikedByMe(livePost);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -213,11 +225,11 @@ class _PostDetailState extends ConsumerState<PostDetail> {
                           MainAxisAlignment.spaceBetween,
                       children: [
                         _ActionButton(
-                          icon: livePost.isLikedByMe
+                          icon: isLikedByMe
                               ? Icons.favorite
                               : Icons.favorite_outline,
                           label: '${livePost.likes}',
-                          color: livePost.isLikedByMe
+                          color: isLikedByMe
                               ? Colors.red
                               : Colors.grey.shade600,
                           onTap: () => ref
@@ -486,6 +498,15 @@ class _ReplyItem extends ConsumerWidget {
                   style: TextStyle(color: Colors.red)),
               onTap: () => Navigator.pop(context),
             ),
+            if (ref.read(groupsProvider.notifier).isMyReply(reply))
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Delete reply', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  ref.read(groupsProvider.notifier).deleteComment(postId, reply.id);
+                  Navigator.pop(context);
+                },
+              ),
           ],
         ),
       ),
@@ -494,7 +515,8 @@ class _ReplyItem extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final isLiked = reply.likedBy.contains('me');
+    final isLiked =
+        ref.read(groupsProvider.notifier).isReplyLikedByMe(reply);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),

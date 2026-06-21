@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mummymap/data/models/profile_model.dart';
 import 'package:mummymap/presentation/providers/settings_provider.dart';
 import 'package:mummymap/presentation/providers/pregnancy_provider.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
+import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:mummymap/presentation/pages/profile_setup/steps/get_to_know_you.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
 
@@ -26,6 +28,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _babyNameController = TextEditingController(text: s.babyName);
     _firstNameController = TextEditingController(text: s.firstName);
     _lastNameController = TextEditingController(text: s.lastName);
+    Future.microtask(
+      () => ref.read(profileProvider.notifier).loadMyProfile(),
+    );
   }
 
   @override
@@ -36,11 +41,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.dispose();
   }
 
+  ProfileModel? get _profile => ref.read(profileProvider).value;
+
+  Future<void> _patchProfile(ProfileModel updated) async {
+    try {
+      await ref.read(profileProvider.notifier).updateFields(updated);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save change. Check your connection.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  void _onFirstChildChanged(String? v) {
+    ref.read(settingsProvider.notifier).setFirstChild(v);
+    final base = _profile ?? ProfileModel();
+    _patchProfile(base.copyWith(
+      numberOfChildren: ProfileMappers.firstChildToCount(v),
+    ));
+  }
+
+  void _onBabyBornChanged(bool v) {
+    ref.read(settingsProvider.notifier).setBabyAlreadyBorn(v);
+    final base = _profile ?? ProfileModel();
+    _patchProfile(base.copyWith(isPregnant: !v));
+  }
+
+  void _onBloodGroupChanged(String? display) {
+    final base = _profile ?? ProfileModel();
+    _patchProfile(base.copyWith(
+      bloodType: ProfileMappers.bloodTypeToApi(display),
+    ));
+  }
+
+  Future<void> _pickDob() async {
+    final current = _profile?.dateOfBirth ?? DateTime(1990);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: current,
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(
+          colorScheme: const ColorScheme.light(
+            primary: Color(0xFF3F2868),
+            onPrimary: Colors.white,
+            onSurface: Color(0xFF1A1A1A),
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) {
+      final base = _profile ?? ProfileModel();
+      await _patchProfile(base.copyWith(dateOfBirth: picked));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsProvider);
     final pregnancy = ref.watch(pregnancyProvider);
+    final profile = ref.watch(profileProvider).value;
     final notifier = ref.read(settingsProvider.notifier);
+
+    final bloodDisplay = ProfileMappers.bloodTypeToDisplay(profile?.bloodType);
+    final dobText = profile?.dateOfBirth != null
+        ? DateFormat('MMM d, yyyy').format(profile!.dateOfBirth!)
+        : null;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -54,7 +128,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 24),
-                    _buildProfileHeader(settings),
+                    _buildProfileHeader(settings, profile),
                     const SizedBox(height: 32),
                     _buildSectionLabel('PREGNANCY'),
                     _buildDivider(),
@@ -63,7 +137,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       label: 'Due Date',
                       trailing: pregnancy != null
                           ? DateFormat('MMM d, yyyy').format(pregnancy.dueDate)
-                          : null,
+                          : (profile?.dueDate != null
+                              ? DateFormat('MMM d, yyyy')
+                                  .format(profile!.dueDate!)
+                              : null),
                     ),
                     _buildDivider(),
                     _buildTappableItem(
@@ -72,7 +149,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => GetToKnowYou(onComplete: () => Navigator.pop(context)),
+                          builder: (_) => GetToKnowYou(
+                              onComplete: () => Navigator.pop(context)),
                         ),
                       ),
                     ),
@@ -95,19 +173,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     _buildDropdownItem(
+                      icon: Icons.bloodtype_outlined,
+                      label: 'Blood Group',
+                      value: bloodDisplay,
+                      hint: 'Select',
+                      items: const [
+                        'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'
+                      ],
+                      onChanged: _onBloodGroupChanged,
+                    ),
+                    _buildDivider(),
+                    _buildTappableItem(
+                      icon: Icons.cake_outlined,
+                      label: 'Date Of Birth',
+                      trailing: dobText ?? 'Select',
+                      onTap: _pickDob,
+                    ),
+                    _buildDivider(),
+                    _buildDropdownItem(
                       icon: Icons.child_friendly_outlined,
                       label: 'First Child?',
                       value: settings.firstChild,
                       hint: 'Select',
                       items: const ['Yes', 'No'],
-                      onChanged: (v) => notifier.setFirstChild(v),
+                      onChanged: _onFirstChildChanged,
                     ),
                     _buildDivider(),
                     _buildToggleItem(
                       icon: Icons.baby_changing_station_outlined,
                       label: 'Baby Already Born?',
                       value: settings.babyAlreadyBorn,
-                      onChanged: (v) => notifier.setBabyAlreadyBorn(v),
+                      onChanged: _onBabyBornChanged,
                     ),
                     _buildDivider(),
                     const SizedBox(height: 24),
@@ -177,10 +273,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       label: 'Age',
                       value: settings.age?.toString(),
                       hint: 'Select',
-                      items: List.generate(
-                        52,
-                        (i) => '${i + 13}',
-                      ),
+                      items: List.generate(52, (i) => '${i + 13}'),
                       onChanged: (v) {
                         if (v != null) notifier.setAge(int.tryParse(v));
                       },
@@ -191,12 +284,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       label: 'Relationship',
                       value: settings.relationship,
                       hint: 'Select',
-                      items: const [
-                        'Mother',
-                        'Father',
-                        'Guardian',
-                        'Partner',
-                      ],
+                      items: const ['Mother', 'Father', 'Guardian', 'Partner'],
                       onChanged: (v) {
                         if (v != null) notifier.setRelationship(v);
                       },
@@ -252,7 +340,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 32),
                     _buildSignOutButton(context),
                     const SizedBox(height: 20),
-                    _buildFooter(settings),
+                    _buildFooter(settings, profile),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -271,18 +359,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const CircleAvatar(
-              radius: 20,
-              backgroundColor: Color(0xFFE8D5F5),
-              child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+            onTap: () => Navigator.maybePop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Color(0xFFF0F0F0),
+              ),
+              child: const Icon(Icons.arrow_back,
+                  color: Color(0xFF1A1A1A), size: 22),
             ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset('assets/logo3.png', height: 28, width: 28,
-                  errorBuilder: (_, __, ___) => const SizedBox(width: 28, height: 28)),
+              Image.asset('assets/logo3.png',
+                  height: 28,
+                  width: 28,
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox(width: 28, height: 28)),
               const SizedBox(width: 8),
               RichText(
                 text: const TextSpan(
@@ -318,7 +414,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildProfileHeader(SettingsState settings) {
+  Widget _buildProfileHeader(SettingsState settings, ProfileModel? profile) {
+    final hasImage = (profile?.profileImage ?? '').isNotEmpty;
     return Center(
       child: Column(
         children: [
@@ -330,16 +427,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: const Color(0xFFE8D5F5),
-                  border: Border.all(
-                    color: const Color(0xFFE0E0E0),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFE0E0E0), width: 1),
+                  image: hasImage
+                      ? DecorationImage(
+                          image: NetworkImage(profile!.profileImage!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-                child: const Icon(
-                  Icons.person,
-                  size: 48,
-                  color: Color(0xFF3F2868),
-                ),
+                child: hasImage
+                    ? null
+                    : const Icon(Icons.person,
+                        size: 48, color: Color(0xFF3F2868)),
               ),
               Positioned(
                 bottom: 0,
@@ -351,11 +450,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     shape: BoxShape.circle,
                     color: Color(0xFF3F2868),
                   ),
-                  child: const Icon(
-                    Icons.camera_alt,
-                    size: 14,
-                    color: Colors.white,
-                  ),
+                  child: const Icon(Icons.camera_alt,
+                      size: 14, color: Colors.white),
                 ),
               ),
             ],
@@ -390,11 +486,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Widget _buildDivider() {
-    return const Divider(
-      height: 1,
-      thickness: 1,
-      color: Color(0xFFF0F0F0),
-    );
+    return const Divider(height: 1, thickness: 1, color: Color(0xFFF0F0F0));
   }
 
   Widget _buildRowItem({
@@ -409,22 +501,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Icon(icon, size: 20, color: const Color(0xFF1A1A1A)),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF1A1A1A))),
           ),
           if (trailing != null)
-            Text(
-              trailing,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF9E9E9E),
-              ),
-            ),
+            Text(trailing,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF9E9E9E))),
         ],
       ),
     );
@@ -433,6 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget _buildTappableItem({
     required IconData icon,
     required String label,
+    String? trailing,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
@@ -445,14 +530,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Icon(icon, size: 20, color: const Color(0xFF1A1A1A)),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
+              child: Text(label,
+                  style: const TextStyle(
+                      fontSize: 14, color: Color(0xFF1A1A1A))),
             ),
+            if (trailing != null)
+              Text(trailing,
+                  style: const TextStyle(
+                      fontSize: 14, color: Color(0xFF9E9E9E))),
           ],
         ),
       ),
@@ -474,19 +559,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             Icon(icon, size: 20, color: const Color(0xFF1A1A1A)),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
+              child: Text(label,
+                  style: const TextStyle(
+                      fontSize: 14, color: Color(0xFF1A1A1A))),
             ),
-            const Icon(
-              Icons.open_in_new,
-              size: 16,
-              color: Color(0xFF9E9E9E),
-            ),
+            const Icon(Icons.open_in_new, size: 16, color: Color(0xFF9E9E9E)),
           ],
         ),
       ),
@@ -506,18 +583,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Icon(icon, size: 20, color: const Color(0xFF1A1A1A)),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF1A1A1A))),
           ),
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: const Color(0xFF3F2868),
             inactiveThumbColor: Colors.white,
             inactiveTrackColor: const Color(0xFFE0E0E0),
@@ -543,43 +616,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Icon(icon, size: 20, color: const Color(0xFF1A1A1A)),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF1A1A1A))),
           ),
           DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
-              hint: Text(
-                hint,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF9E9E9E),
-                ),
-              ),
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                size: 18,
-                color: Color(0xFF9E9E9E),
-              ),
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF9E9E9E),
-              ),
+              hint: Text(hint,
+                  style: const TextStyle(
+                      fontSize: 14, color: Color(0xFF9E9E9E))),
+              icon: const Icon(Icons.keyboard_arrow_down,
+                  size: 18, color: Color(0xFF9E9E9E)),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
               items: items
                   .map((item) => DropdownMenuItem(
                         value: item,
-                        child: Text(
-                          item,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF1A1A1A),
-                          ),
-                        ),
+                        child: Text(item,
+                            style: const TextStyle(
+                                fontSize: 14, color: Color(0xFF1A1A1A))),
                       ))
                   .toList(),
               onChanged: onChanged,
@@ -604,28 +659,19 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           Icon(icon, size: 20, color: const Color(0xFF1A1A1A)),
           const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF1A1A1A),
-              ),
-            ),
+            child: Text(label,
+                style: const TextStyle(
+                    fontSize: 14, color: Color(0xFF1A1A1A))),
           ),
           Expanded(
             child: TextField(
               controller: controller,
               textAlign: TextAlign.right,
-              style: const TextStyle(
-                fontSize: 14,
-                color: Color(0xFF9E9E9E),
-              ),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: const TextStyle(
-                  fontSize: 14,
-                  color: Color(0xFF9E9E9E),
-                ),
+                    fontSize: 14, color: Color(0xFF9E9E9E)),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.zero,
                 isDense: true,
@@ -670,27 +716,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildFooter(SettingsState settings) {
+  Widget _buildFooter(SettingsState settings, ProfileModel? profile) {
     final now = DateTime.now();
     final formatted = '${_monthName(now.month)} ${now.day}, ${now.year}';
+    final email = profile?.email ?? settings.email;
     return Column(
       children: [
-        Text(
-          'Last backup on: $formatted',
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF9E9E9E),
-          ),
-        ),
+        Text('Last backup on: $formatted',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E))),
         const SizedBox(height: 4),
         Text(
-          settings.email.isNotEmpty
-              ? 'Account Google: ${settings.email}'
-              : '',
-          style: const TextStyle(
-            fontSize: 11,
-            color: Color(0xFF9E9E9E),
-          ),
+          email.isNotEmpty ? 'Account: $email' : '',
+          style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
         ),
       ],
     );
@@ -736,10 +773,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const Text(
               'Are you sure you want to sign out?',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Color(0xFF9E9E9E),
-              ),
+              style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
             ),
             const SizedBox(height: 24),
             Row(
@@ -799,8 +833,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('is_logged_in', false);
+    try {
+      await ref.read(settingsProvider.notifier).clear();
+      await ref.read(authRepositoryProvider).logoutCurrentDevice();
+    } catch (_) {}
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const SignIn()),
