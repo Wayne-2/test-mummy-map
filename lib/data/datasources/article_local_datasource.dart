@@ -9,8 +9,8 @@ class ArticleLocalDatasource {
 
   Box<String> get _box => Hive.box<String>(_boxName);
 
-  Future<List<Article>> getArticles() async {
-    final json = _box.get(_articlesKey);
+  Future<List<Article>> getArticles(String userId) async {
+    final json = _box.get('${_articlesKey}_$userId');
     if (json == null) return [];
     try {
       final decoded = jsonDecode(json) as List;
@@ -20,12 +20,12 @@ class ArticleLocalDatasource {
     }
   }
 
-  Future<void> saveArticles(List<Article> articles) async {
-    await _box.put(_articlesKey, jsonEncode(articles.map((e) => e.toJson()).toList()));
+  Future<void> saveArticles(String userId, List<Article> articles) async {
+    await _box.put('${_articlesKey}_$userId', jsonEncode(articles.map((e) => e.toJson()).toList()));
   }
 
-  Future<Set<String>> getBookmarkedIds() async {
-    final json = _box.get(_bookmarksKey);
+  Future<Set<String>> getBookmarkedIds(String userId) async {
+    final json = _box.get('${_bookmarksKey}_$userId');
     if (json == null) return {};
     try {
       final decoded = jsonDecode(json) as List;
@@ -35,7 +35,7 @@ class ArticleLocalDatasource {
     }
   }
 
-  Future<void> saveBookmarkedIds(Set<String> ids) async {
-    await _box.put(_bookmarksKey, jsonEncode(ids.toList()));
+  Future<void> saveBookmarkedIds(String userId, Set<String> ids) async {
+    await _box.put('${_bookmarksKey}_$userId', jsonEncode(ids.toList()));
   }
 }

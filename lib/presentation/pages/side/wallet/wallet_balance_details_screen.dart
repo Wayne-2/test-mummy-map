@@ -1,25 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/data/models/wallet_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
+import 'package:mummymap/presentation/providers/wallet_provider.dart';
 import 'package:mummymap/presentation/pages/side/wallet/widget/wallet_widgets.dart';
 import 'transaction_detail_screen.dart';
 
-class WalletBalanceDetailsScreen extends StatefulWidget {
+class WalletBalanceDetailsScreen extends ConsumerStatefulWidget {
   final double balance;
 
   const WalletBalanceDetailsScreen({super.key, required this.balance});
 
   @override
-  State<WalletBalanceDetailsScreen> createState() =>
+  ConsumerState<WalletBalanceDetailsScreen> createState() =>
       _WalletBalanceDetailsScreenState();
 }
 
 class _WalletBalanceDetailsScreenState
-    extends State<WalletBalanceDetailsScreen> {
+    extends ConsumerState<WalletBalanceDetailsScreen> {
   bool _balanceVisible = true;
 
   @override
   Widget build(BuildContext context) {
-    final grouped = groupByDate(kWalletTransactions);
+    final txAsync = ref.watch(walletTransactionsProvider);
+    final transactions = txAsync.value ?? [];
+    final grouped = groupByDate(transactions);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -85,6 +90,9 @@ class _WalletBalanceDetailsScreenState
   }
 
   Widget _buildBalanceCard(BuildContext context) {
+    final balanceAsync = ref.watch(walletBalanceProvider);
+    final currentBalance = balanceAsync.value ?? widget.balance;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
@@ -105,7 +113,7 @@ class _WalletBalanceDetailsScreenState
             children: [
               Text(
                 _balanceVisible
-                    ? formatBalance(widget.balance)
+                    ? formatBalance(currentBalance)
                     : '₦ ••••••',
                 style: const TextStyle(
                   fontSize: 28,
@@ -162,13 +170,85 @@ class _WalletBalanceDetailsScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => const _AddMoneySheet(),
+      builder: (_) => _AddMoneySheet(
+        onDeposit: (amount) async {
+          final reference = const Uuid().v4();
+          final idempotencyKey = const Uuid().v4();
+          
+          final result = await ref.read(walletNotifierProvider.notifier).initiateTopup(
+            amount: amount,
+            reference: reference,
+            idempotencyKey: idempotencyKey,
+          );
+          
+          if (result != null && result['authorizationUrl'] != null) {
+            final urlStr = result['authorizationUrl'].toString();
+            final url = Uri.tryParse(urlStr);
+            if (url != null && await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+              if (mounted) {
+                _showVerificationDialog(context, reference);
+              }
+            } else {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not open payment link')),
+                );
+              }
+            }
+          } else {
+             if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to initiate topup')),
+                );
+              }
+          }
+        },
+      ),
+    );
+  }
+
+  void _showVerificationDialog(BuildContext context, String reference) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verify Payment'),
+        content: const Text('Did you complete the payment successfully?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await ref.read(walletNotifierProvider.notifier).verifyTopup(reference);
+              if (mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment verified successfully!')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment verification failed. Please try again later.')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3F2868)),
+            child: const Text('I have paid', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _AddMoneySheet extends StatefulWidget {
-  const _AddMoneySheet();
+  final Future<void> Function(double) onDeposit;
+
+  const _AddMoneySheet({required this.onDeposit});
 
   @override
   State<_AddMoneySheet> createState() => _AddMoneySheetState();
@@ -250,12 +330,14 @@ class _AddMoneySheetState extends State<_AddMoneySheet> {
                 onPressed: _isLoading
                     ? null
                     : () async {
+                        final amount = double.tryParse(_amountController.text) ?? 0;
+                        if (amount <= 0) return;
                         setState(() => _isLoading = true);
-                        await Future.delayed(
-                            const Duration(seconds: 2));
-                        if (!mounted) return;
-                        setState(() => _isLoading = false);
-                        Navigator.pop(context);
+                        await widget.onDeposit(amount);
+                        if (mounted) {
+                          setState(() => _isLoading = false);
+                          Navigator.pop(context);
+                        }
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),

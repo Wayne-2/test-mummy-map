@@ -108,4 +108,12 @@ class AuthRepository {
       await _clearSession();
     }
   }
+
+  Future<void> deleteAccount() async {
+    try {
+      await datasource.deleteAccount();
+    } finally {
+      await _clearSession();
+    }
+  }
 }

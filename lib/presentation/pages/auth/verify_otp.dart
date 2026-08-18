@@ -4,10 +4,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/presentation/pages/auth/signup.dart' show describeAuthError;
-import 'package:mummymap/presentation/pages/mainnav/main_nav.dart';
-import 'package:mummymap/presentation/pages/profile_setup/profile_setup.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
 
 class VerifyOtp extends ConsumerStatefulWidget {
   final String email;
@@ -81,12 +81,30 @@ class _VerifyOtpState extends ConsumerState<VerifyOtp> {
       if (widget.isSignup) {
         context.go('/profile-setup');
       } else {
-        final prefs = await SharedPreferences.getInstance();
-        final done = prefs.getBool('has_completed_setup') ?? false;
-        if (done) {
+        try {
+          // Check backend to see if profile actually exists
+          await ref.read(profileRepositoryProvider).getMyProfile();
+          
+          // Profile exists, update local flag for offline cache and go home
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('has_completed_setup', true);
+          
+          if (!mounted) return;
           context.go('/home');
-        } else {
-          context.go('/profile-setup');
+        } on DioException catch (e) {
+          if (!mounted) return;
+          if (e.response?.statusCode == 404) {
+            context.go('/profile-setup');
+          } else {
+            // On other network errors, fallback to checking local storage
+            final prefs = await SharedPreferences.getInstance();
+            final done = prefs.getBool('has_completed_setup') ?? false;
+            if (done) {
+              context.go('/home');
+            } else {
+              context.go('/profile-setup');
+            }
+          }
         }
       }
     } catch (e) {

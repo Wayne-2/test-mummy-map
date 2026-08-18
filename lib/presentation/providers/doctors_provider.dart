@@ -4,64 +4,65 @@ import 'package:mummymap/data/models/doctor_model.dart';
 import 'package:mummymap/data/repositories/doctor_repository_impl.dart';
 import 'package:mummymap/domain/repositories/doctor_repository.dart';
 import 'package:mummymap/domain/usecases/doctor_usecases.dart';
+import 'package:mummymap/presentation/providers/auth_provider.dart';
 
-// ─── Providers ───────────────────────────────────────────────────────────────
+
 
 final doctorRemoteDataSourceProvider = Provider.autoDispose(
-  (_) => DoctorRemoteDataSourceImpl(),
+  (ref) => DoctorRemoteDataSourceImpl(ref.watch(dioProvider)),
 );
 
 final doctorRepositoryProvider = Provider.autoDispose<DoctorRepository>(
-  (ref) => DoctorRepositoryImpl(ref.read(doctorRemoteDataSourceProvider)),
+  (ref) => DoctorRepositoryImpl(ref.watch(doctorRemoteDataSourceProvider)),
 );
 
 final getDoctorsUseCaseProvider = Provider.autoDispose(
-  (ref) => GetDoctorsUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => GetDoctorsUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final getReviewsUseCaseProvider = Provider.autoDispose(
-  (ref) => GetReviewsUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => GetReviewsUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final getUpcomingAppointmentsUseCaseProvider = Provider.autoDispose(
-  (ref) => GetUpcomingAppointmentsUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => GetUpcomingAppointmentsUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final getScheduledAppointmentsUseCaseProvider = Provider.autoDispose(
-  (ref) => GetScheduledAppointmentsUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => GetScheduledAppointmentsUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final getHistoryAppointmentsUseCaseProvider = Provider.autoDispose(
-  (ref) => GetHistoryAppointmentsUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => GetHistoryAppointmentsUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final getAppointmentDetailUseCaseProvider = Provider.autoDispose(
-  (ref) => GetAppointmentDetailUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => GetAppointmentDetailUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final bookAppointmentUseCaseProvider = Provider.autoDispose(
-  (ref) => BookAppointmentUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => BookAppointmentUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final submitReviewUseCaseProvider = Provider.autoDispose(
-  (ref) => SubmitReviewUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => SubmitReviewUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final sendMessageUseCaseProvider = Provider.autoDispose(
-  (ref) => SendMessageUseCase(ref.read(doctorRepositoryProvider)),
+  (ref) => SendMessageUseCase(ref.watch(doctorRepositoryProvider)),
 );
 
 final doctorsProvider = StateNotifierProvider.autoDispose<DoctorsNotifier, DoctorsState>(
   (ref) => DoctorsNotifier(
-    getDoctors: ref.read(getDoctorsUseCaseProvider),
-    getReviews: ref.read(getReviewsUseCaseProvider),
-    getUpcoming: ref.read(getUpcomingAppointmentsUseCaseProvider),
-    getScheduled: ref.read(getScheduledAppointmentsUseCaseProvider),
-    getHistory: ref.read(getHistoryAppointmentsUseCaseProvider),
-    getAppointmentDetail: ref.read(getAppointmentDetailUseCaseProvider),
-    bookAppointment: ref.read(bookAppointmentUseCaseProvider),
-    submitReview: ref.read(submitReviewUseCaseProvider),
-    sendMessage: ref.read(sendMessageUseCaseProvider),
+    getDoctors: ref.watch(getDoctorsUseCaseProvider),
+    getReviews: ref.watch(getReviewsUseCaseProvider),
+    getUpcoming: ref.watch(getUpcomingAppointmentsUseCaseProvider),
+    getScheduled: ref.watch(getScheduledAppointmentsUseCaseProvider),
+    getHistory: ref.watch(getHistoryAppointmentsUseCaseProvider),
+    getAppointmentDetail: ref.watch(getAppointmentDetailUseCaseProvider),
+    bookAppointment: ref.watch(bookAppointmentUseCaseProvider),
+    submitReview: ref.watch(submitReviewUseCaseProvider),
+    sendMessage: ref.watch(sendMessageUseCaseProvider),
   ),
 );
 

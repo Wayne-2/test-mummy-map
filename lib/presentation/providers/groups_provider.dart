@@ -8,9 +8,12 @@ import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:mummymap/presentation/providers/profile_provider.dart';
 
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
+  final profile = ref.watch(profileProvider).value;
+  final userId = profile?.userId ?? profile?.id ?? '';
   return GroupRepository(
     GroupRemoteDatasource(ref.read(dioProvider)),
     GroupLocalDatasource(),
+    userId,
   );
 });
 
@@ -79,6 +82,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
   final GroupRepository _repository;
   final String _currentUserId;
   final String _currentUserName;
+  Future<void>? _groupsLoadInFlight;
 
   GroupsNotifier(
     this._repository, {
@@ -88,7 +92,15 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
         _currentUserName = currentUserName,
         super(const GroupsState());
 
-  Future<void> loadGroups() async {
+  Future<void> loadGroups() {
+    final inFlight = _groupsLoadInFlight;
+    if (inFlight != null) return inFlight;
+    final load = _loadGroups();
+    _groupsLoadInFlight = load;
+    return load.whenComplete(() => _groupsLoadInFlight = null);
+  }
+
+  Future<void> _loadGroups() async {
     if (state.groups.isEmpty) {
       state = state.copyWith(isLoading: true, clearError: true);
       try {
@@ -103,12 +115,39 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
 
     try {
       final remoteGroups = await _repository.getGroups(currentUserId: _currentUserId);
-      state = state.copyWith(groups: remoteGroups, isLoading: false);
+      final mergedGroups = remoteGroups.map((rg) {
+        final localGroupsMatch = state.groups.where((lg) => lg.id == rg.id);
+        if (localGroupsMatch.isNotEmpty) {
+          final local = localGroupsMatch.first;
+          return rg.copyWith(
+            joined: rg.joined || local.joined,
+            isOwner: rg.isOwner || local.isOwner,
+          );
+        }
+        return rg;
+      }).toList();
+      state = state.copyWith(groups: mergedGroups, isLoading: false);
     } catch (_) {
       state = state.copyWith(
         isLoading: false,
         errorMessage: state.groups.isEmpty ? 'Failed to load your groups. Please check your connection.' : null,
       );
+    }
+
+    try {
+      final bookmarks = await _repository.getBookmarks();
+      state = state.copyWith(globalBookmarks: bookmarks);
+    } catch (_) {}
+  }
+
+  Future<void> loadForYouFeed() async {
+    if (state.groups.isEmpty) {
+      await loadGroups();
+    }
+    final joined = state.joinedGroups;
+    if (joined.isEmpty) return;
+    for (final group in joined) {
+      await loadPostsForGroup(group.id);
     }
   }
 
@@ -133,6 +172,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
         groups: [created, ...state.groups],
         isSubmitting: false,
       );
+      await _invalidateGroupsCache();
       return true;
     } catch (_) {
       state = state.copyWith(
@@ -143,7 +183,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     }
   }
 
-  Future<void> joinGroup(String groupId) async {
+  Future<bool> joinGroup(String groupId) async {
     final previous = state.groups;
     state = state.copyWith(
       groups: state.groups.map((g) {
@@ -154,16 +194,21 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     );
     try {
       await _repository.joinGroup(groupId);
+      await _invalidateGroupsCache();
+      return true;
     } on DioException catch (e) {
-      if (e.response?.statusCode != 400 && e.response?.statusCode != 409) {
-        state = state.copyWith(groups: previous);
+      if (e.response?.statusCode == 409) {
+        return true;
       }
+      state = state.copyWith(groups: previous);
+      return false;
     } catch (_) {
       state = state.copyWith(groups: previous);
+      return false;
     }
   }
 
-  Future<void> leaveGroup(String groupId) async {
+  Future<bool> leaveGroup(String groupId) async {
     final previous = state.groups;
     state = state.copyWith(
       groups: state.groups.map((g) {
@@ -177,8 +222,11 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     );
     try {
       await _repository.leaveGroup(groupId);
+      await _invalidateGroupsCache();
+      return true;
     } catch (_) {
       state = state.copyWith(groups: previous);
+      return false;
     }
   }
 
@@ -203,17 +251,32 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     } catch (_) {}
 
     try {
-      final posts = await _repository.getGroupPosts(
+      final remotePosts = await _repository.getGroupPosts(
         groupId: groupId,
         groupName: g.name,
         groupColor: g.avatarColor,
         groupInitials: g.initials,
         page: 1,
       );
+
+      final mergedPosts = remotePosts.map((rp) {
+        final localMatch = state.posts.where((lp) => lp.id == rp.id).toList();
+        if (localMatch.isNotEmpty) {
+          final local = localMatch.first;
+          final alreadyLikedLocally = local.likedBy.contains(_currentUserId);
+          final likedRemotely = rp.likedBy.contains(_currentUserId);
+
+          if (alreadyLikedLocally && !likedRemotely) {
+             return rp.copyWith(likedBy: [...rp.likedBy, _currentUserId]);
+          }
+        }
+        return rp;
+      }).toList();
+
       final others = state.posts.where((p) => p.groupId != groupId).toList();
       state = state.copyWith(
-        posts: [...posts, ...others],
-        hasMore: posts.length == 20,
+        posts: [...mergedPosts, ...others],
+        hasMore: mergedPosts.length == 20,
         isLoading: false,
       );
     } catch (_) {
@@ -237,17 +300,31 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     final nextPage = state.page + 1;
 
     try {
-      final newPosts = await _repository.getGroupPosts(
+      final remoteNewPosts = await _repository.getGroupPosts(
         groupId: groupId,
         groupName: g.name,
         groupColor: g.avatarColor,
         groupInitials: g.initials,
         page: nextPage,
       );
-      
+
+      final newPosts = remoteNewPosts.map((rp) {
+        final localMatch = state.posts.where((lp) => lp.id == rp.id).toList();
+        if (localMatch.isNotEmpty) {
+          final local = localMatch.first;
+          final alreadyLikedLocally = local.likedBy.contains(_currentUserId);
+          final likedRemotely = rp.likedBy.contains(_currentUserId);
+
+          if (alreadyLikedLocally && !likedRemotely) {
+             return rp.copyWith(likedBy: [...rp.likedBy, _currentUserId]);
+          }
+        }
+        return rp;
+      }).toList();
+
       final currentGroupPosts = state.posts.where((p) => p.groupId == groupId).toList();
       final otherPosts = state.posts.where((p) => p.groupId != groupId).toList();
-      
+
       state = state.copyWith(
         posts: [...currentGroupPosts, ...newPosts, ...otherPosts],
         page: nextPage,
@@ -270,24 +347,13 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     if (groupMatch.isEmpty) return false;
     final g = groupMatch.first;
 
-    // Fake poll creation for UI only (if pollOptions is not empty)
+    // The server does not expose a poll creation contract. Never create a
+    // local-only post that would vanish after a refresh.
     if (pollOptions.isNotEmpty) {
-      final localPost = GroupPost(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        groupId: groupId,
-        groupInitials: g.initials,
-        groupColor: g.avatarColor,
-        author: _currentUserName,
-        group: g.name,
-        createdAt: DateTime.now(),
-        title: title,
-        body: '',
-        likes: 0,
-        type: 'poll',
-        pollOptions: pollOptions,
+      state = state.copyWith(
+        errorMessage: 'Polls are not available yet.',
       );
-      state = state.copyWith(posts: [localPost, ...state.posts]);
-      return true;
+      return false;
     }
 
     state = state.copyWith(isSubmitting: true);
@@ -304,6 +370,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
           ? GroupPost(
               id: post.id,
               groupId: post.groupId,
+              authorId: _currentUserId,
               groupInitials: post.groupInitials,
               groupColor: post.groupColor,
               author: _currentUserName,
@@ -321,6 +388,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
         posts: [withAuthor, ...state.posts],
         isSubmitting: false,
       );
+      await _invalidateGroupPostsCache(groupId);
       return true;
     } catch (_) {
       state = state.copyWith(
@@ -332,17 +400,27 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
   }
 
   Future<void> deletePost(String postId) async {
+    final previous = state.posts;
+    final groupId = _groupIdForPost(postId, previous);
     try {
       state = state.copyWith(
         posts: state.posts.where((p) => p.id != postId).toList(),
       );
       await _repository.deletePost(postId);
+      if (groupId != null) {
+        await _invalidateGroupPostsCache(groupId);
+      }
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Failed to delete post.');
+      state = state.copyWith(
+        posts: previous,
+        errorMessage: 'Failed to delete post.',
+      );
     }
   }
 
   Future<void> deleteComment(String postId, String commentId) async {
+    final previous = state.posts;
+    final groupId = _groupIdForPost(postId, previous);
     try {
       state = state.copyWith(
         posts: state.posts.map((p) {
@@ -353,8 +431,14 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
         }).toList(),
       );
       await _repository.deleteComment(commentId);
+      if (groupId != null) {
+        await _invalidateGroupPostsCache(groupId);
+      }
     } catch (_) {
-      state = state.copyWith(errorMessage: 'Failed to delete comment.');
+      state = state.copyWith(
+        posts: previous,
+        errorMessage: 'Failed to delete comment.',
+      );
     }
   }
 
@@ -383,6 +467,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
       } else {
         await _repository.likePost(postId);
       }
+      await _invalidateGroupPostsCache(post.groupId);
     } catch (_) {
       state = state.copyWith(
         posts: state.posts.map((p) {
@@ -396,6 +481,10 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
           );
         }).toList(),
       );
+      final groupId = _groupIdForPost(postId, state.posts);
+      if (groupId != null) {
+        await _invalidateGroupPostsCache(groupId);
+      }
     }
   }
 
@@ -410,6 +499,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
       final named = reply.author == 'Member'
           ? PostReply(
               id: reply.id,
+              authorId: _currentUserId,
               author: _currentUserName,
               initials: reply.initials,
               avatarColor: reply.avatarColor,
@@ -424,29 +514,16 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
           return p.copyWith(postReplies: [...p.postReplies, named]);
         }).toList(),
       );
+      final groupId = _groupIdForPost(postId, state.posts);
+      if (groupId != null) {
+        await _invalidateGroupPostsCache(groupId);
+      }
     } catch (_) {
       state = state.copyWith(
         isSubmitting: false,
         errorMessage: 'Could not send your reply. Please try again.',
       );
     }
-  }
-
-  void toggleLikeReply(String postId, String replyId) {
-    state = state.copyWith(
-      posts: state.posts.map((p) {
-        if (p.id != postId) return p;
-        final updatedReplies = p.postReplies.map((r) {
-          if (r.id != replyId) return r;
-          final alreadyLiked = r.likedBy.contains(_currentUserId);
-          final updatedLikedBy = alreadyLiked
-              ? r.likedBy.where((id) => id != _currentUserId).toList()
-              : [...r.likedBy, _currentUserId];
-          return r.copyWith(likedBy: updatedLikedBy);
-        }).toList();
-        return p.copyWith(postReplies: updatedReplies);
-      }).toList(),
-    );
   }
 
   void toggleBookmark(String postId) {
@@ -457,6 +534,7 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
       bookmarks.add(postId);
     }
     state = state.copyWith(globalBookmarks: bookmarks);
+    _repository.saveBookmarks(bookmarks);
   }
 
   void voteOnPoll(String postId, int optionIndex) {
@@ -476,14 +554,35 @@ class GroupsNotifier extends StateNotifier<GroupsState> {
     );
   }
 
+  Future<void> _invalidateGroupsCache() async {
+    try {
+      await _repository.invalidateGroupsCache();
+    } catch (_) {}
+  }
+
+  Future<void> _invalidateGroupPostsCache(String groupId) async {
+    try {
+      await _repository.invalidateGroupPostsCache(groupId);
+    } catch (_) {}
+  }
+
+  String? _groupIdForPost(String postId, List<GroupPost> posts) {
+    for (final post in posts) {
+      if (post.id == postId) return post.groupId;
+    }
+    return null;
+  }
+
   bool isLikedByMe(GroupPost post) => post.likedBy.contains(_currentUserId);
 
   bool isReplyLikedByMe(PostReply reply) =>
       reply.likedBy.contains(_currentUserId);
 
-  bool isMyPost(GroupPost post) => post.author == _currentUserName;
+  bool isMyPost(GroupPost post) =>
+      _currentUserId.isNotEmpty && post.authorId == _currentUserId;
   
-  bool isMyReply(PostReply reply) => reply.author == _currentUserName;
+  bool isMyReply(PostReply reply) =>
+      _currentUserId.isNotEmpty && reply.authorId == _currentUserId;
 
   void clearError() => state = state.copyWith(clearError: true);
 }

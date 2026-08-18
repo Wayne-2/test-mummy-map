@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/track_models.dart';
 import 'package:mummymap/presentation/pages/mainnav/track/recipe_screen.dart';
 import 'package:mummymap/presentation/pages/mainnav/track/vendor_profile_screen.dart';
+import 'package:mummymap/presentation/providers/meal_plan_provider.dart';
 
-class MealPlanTab extends StatefulWidget {
+class MealPlanTab extends ConsumerStatefulWidget {
   const MealPlanTab({super.key});
 
   @override
-  State<MealPlanTab> createState() => _MealPlanTabState();
+  ConsumerState<MealPlanTab> createState() => _MealPlanTabState();
 }
 
-class _MealPlanTabState extends State<MealPlanTab> {
+class _MealPlanTabState extends ConsumerState<MealPlanTab> {
   String _selectedDay = 'Today';
 
   @override
@@ -23,8 +25,6 @@ class _MealPlanTabState extends State<MealPlanTab> {
           _buildHeader(),
           const SizedBox(height: 20),
           _buildMealList(context),
-          const SizedBox(height: 32),
-          _buildVendorsSection(context),
           const SizedBox(height: 32),
         ],
       ),
@@ -68,18 +68,44 @@ class _MealPlanTabState extends State<MealPlanTab> {
   }
 
   Widget _buildMealList(BuildContext context) {
-    return Column(
-      children: kMeals
-          .map((meal) => _MealCard(
-                meal: meal,
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => RecipeScreen(meal: meal),
-                  ),
-                ),
-              ))
-          .toList(),
+    final mealPlanState = ref.watch(mealPlanProvider);
+    
+    return mealPlanState.when(
+      data: (meals) {
+        if (meals.isEmpty) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32.0),
+              child: Text('No meal plans found.'),
+            ),
+          );
+        }
+        return Column(
+          children: meals
+              .map((meal) => _MealCard(
+                    meal: meal,
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RecipeScreen(meal: meal),
+                      ),
+                    ),
+                  ))
+              .toList(),
+        );
+      },
+      loading: () => const Center(
+        child: Padding(
+          padding: EdgeInsets.all(32.0),
+          child: CircularProgressIndicator(),
+        ),
+      ),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Text('Error loading meal plans.'),
+        ),
+      ),
     );
   }
 

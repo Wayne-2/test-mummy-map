@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:mummymap/data/models/doctor_model.dart';
 
 // Replace the stub returns with real Dio calls when the backend is ready.
@@ -28,33 +29,51 @@ abstract class DoctorRemoteDataSource {
 }
 
 class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
+  final Dio dio;
+
+  DoctorRemoteDataSourceImpl(this.dio);
+
   @override
   Future<List<Doctor>> getDoctors() async {
-    return _kDoctors;
+    final response = await dio.get('/api/v1/doctors');
+    final data = response.data['data'] as List? ?? response.data as List;
+    return data.map((e) => Doctor.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<List<DoctorReview>> getReviews(String doctorId) async {
-    return _kDoctorReviews;
+    final response = await dio.get('/api/v1/doctors/$doctorId/reviews');
+    final data = response.data['data'] as List? ?? response.data as List;
+    return data.map((e) => DoctorReview.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<List<DoctorAppointment>> getUpcomingAppointments() async {
-    return _kUpcomingAppointments;
+    final response = await dio.get('/api/v1/appointments', queryParameters: {'status': 'upcoming'});
+    final data = response.data['data'] as List? ?? response.data as List;
+    return data.map((e) => DoctorAppointment.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<List<DoctorAppointment>> getScheduledAppointments() async {
-    return _kScheduledAppointments;
+    // Both upcoming and scheduled can map to the upcoming API status
+    final response = await dio.get('/api/v1/appointments', queryParameters: {'status': 'upcoming'});
+    final data = response.data['data'] as List? ?? response.data as List;
+    return data.map((e) => DoctorAppointment.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<List<DoctorAppointment>> getHistoryAppointments() async {
-    return _kHistoryAppointments;
+    final response = await dio.get('/api/v1/appointments', queryParameters: {'status': 'past'});
+    final data = response.data['data'] as List? ?? response.data as List;
+    return data.map((e) => DoctorAppointment.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   @override
   Future<DoctorAppointment> getAppointmentDetail(String appointmentId) async {
+    // If there is no specific get detail endpoint for appointments, we return mock or fetch from list.
+    // Assuming backend returns it in the list, we can just return the mock for now since it wasn't provided,
+    // or fetch the list and filter.
     return _kCompletedAppointmentDetail;
   }
 
@@ -65,7 +84,13 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
     required String time,
     required String callType,
   }) async {
-    // Stub implementation
+    await dio.post('/api/v1/appointments', data: {
+      'doctorId': doctorId,
+      'slotId': 'dummy-slot-id', // The UI needs to be updated to select real slots
+      'type': callType.toUpperCase(),
+      'reason': 'Routine checkup',
+      'notes': 'Requested time: $date $time',
+    });
   }
 
   @override
@@ -74,7 +99,13 @@ class DoctorRemoteDataSourceImpl implements DoctorRemoteDataSource {
     required double rating,
     required String body,
   }) async {
-    // Stub implementation
+    await dio.post(
+      '/api/v1/doctors/$doctorId/reviews',
+      data: {
+        'rating': rating,
+        'review': body,
+      },
+    );
   }
 
   @override

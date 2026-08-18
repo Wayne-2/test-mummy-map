@@ -17,7 +17,7 @@ dependencies:
   riverpod_annotation: ^2.3.5
   shared_preferences: ^2.2.3
   dio: ^5.9.2
-  flutter_secure_storage: ^8.0.0
+  flutter_secure_storage: 
   image_picker: ^1.2.2
   share_plus: ^13.1.0
   flutter_widget_from_html_core: ^0.17.2
@@ -25,7 +25,13 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   path_provider: ^2.1.6
-
+  agora_rtc_engine: ^6.5.3
+  permission_handler: ^12.0.1
+  firebase_core: ^4.11.0
+  onesignal_flutter: ^5.6.3
+  add_2_calendar: 3.0.1
+  url_launcher: ^6.3.2
+  uuid: ^4.6.0
 
 dev_dependencies:
   flutter_test:

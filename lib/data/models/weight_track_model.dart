@@ -9,6 +9,7 @@ class WeightLog {
   final DateTime recordedAt;
   final int? week;
   final String? notes;
+  final bool isPendingSync;
 
   const WeightLog({
     this.id,
@@ -16,6 +17,7 @@ class WeightLog {
     required this.recordedAt,
     this.week,
     this.notes,
+    this.isPendingSync = false,
   });
 
   double get weightLb => kgToLb(weightKg);
@@ -55,6 +57,7 @@ class WeightLog {
       recordedAt: parseDate(),
       week: pickNum(['week', 'pregnancyWeek'])?.toInt(),
       notes: root['notes'] as String?,
+      isPendingSync: root['isPendingSync'] == true,
     );
   }
 
@@ -68,4 +71,19 @@ class WeightLog {
     map.removeWhere((_, v) => v == null);
     return map;
   }
+
+  Map<String, dynamic> toStorageJson() => {
+        ...toCreateJson(),
+        if (id != null) 'id': id,
+        'isPendingSync': isPendingSync,
+      };
+
+  WeightLog copyWith({String? id, bool? isPendingSync}) => WeightLog(
+        id: id ?? this.id,
+        weightKg: weightKg,
+        recordedAt: recordedAt,
+        week: week,
+        notes: notes,
+        isPendingSync: isPendingSync ?? this.isPendingSync,
+      );
 }

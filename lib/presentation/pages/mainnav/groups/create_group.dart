@@ -13,19 +13,7 @@ class _CreateGroupState extends ConsumerState<CreateGroup> {
   final _nameController = TextEditingController();
   final _tagsController = TextEditingController();
   bool _isPublic = true;
-  int _selectedColor = 0xFF3F2868;
   bool _isLoading = false;
-
-  final List<int> _colors = [
-    0xFF3F2868,
-    0xFFE57373,
-    0xFF4FC3F7,
-    0xFF81C784,
-    0xFFFFB74D,
-    0xFFBA68C8,
-    0xFF4DD0E1,
-    0xFFFF8A65,
-  ];
 
   @override
   void dispose() {
@@ -108,7 +96,7 @@ class _CreateGroupState extends ConsumerState<CreateGroup> {
                             width: 90,
                             height: 90,
                             decoration: BoxDecoration(
-                              color: Color(_selectedColor),
+                              color: const Color(0xFF3F2868),
                               borderRadius: BorderRadius.circular(24),
                             ),
                             child: Center(
@@ -125,38 +113,6 @@ class _CreateGroupState extends ConsumerState<CreateGroup> {
                                     fontWeight: FontWeight.bold),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 12),
-                          const Text('Pick a color',
-                              style: TextStyle(
-                                  fontSize: 13, color: Color(0xFF9E9E9E))),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 10,
-                            children: _colors.map((color) {
-                              final isSelected = _selectedColor == color;
-                              return GestureDetector(
-                                onTap: () =>
-                                    setState(() => _selectedColor = color),
-                                child: Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: Color(color),
-                                    shape: BoxShape.circle,
-                                    border: isSelected
-                                        ? Border.all(
-                                            color: Colors.black,
-                                            width: 2.5)
-                                        : null,
-                                  ),
-                                  child: isSelected
-                                      ? const Icon(Icons.check,
-                                          color: Colors.white, size: 16)
-                                      : null,
-                                ),
-                              );
-                            }).toList(),
                           ),
                         ],
                       ),
@@ -208,7 +164,7 @@ class _CreateGroupState extends ConsumerState<CreateGroup> {
                     _PrivacyOption(
                       icon: Icons.lock_outline,
                       title: 'Private',
-                      subtitle: 'Only people you invite can join',
+                      subtitle: 'Only approved members can view this group',
                       selected: !_isPublic,
                       onTap: () => setState(() => _isPublic = false),
                     ),

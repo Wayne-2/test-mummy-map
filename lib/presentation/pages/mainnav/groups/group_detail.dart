@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/community_rules.dart';
@@ -80,18 +81,8 @@ class _GroupDetailState extends ConsumerState<GroupDetail> {
                 MaterialPageRoute(
                   builder: (_) => CommunityRules(
                     onAccept: () {
-                      ref
-                          .read(groupsProvider.notifier)
-                          .joinGroup(groupId);
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content:
-                              Text('You joined ${group.name}!'),
-                          duration: const Duration(seconds: 2),
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      _joinGroup(context, ref, group);
                     },
                   ),
                 ),
@@ -105,9 +96,6 @@ class _GroupDetailState extends ConsumerState<GroupDetail> {
               child: _NotJoinedState(),
             )
           else ...[
-            SliverToBoxAdapter(
-              child: _TopContributors(),
-            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding:
@@ -213,7 +201,13 @@ class _GroupDetailState extends ConsumerState<GroupDetail> {
             ListTile(
               leading: const Icon(Icons.share_outlined),
               title: const Text('Share group'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: group.name));
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Group name copied to clipboard.')),
+                );
+              },
             ),
             if (group.joined && !group.isOwner)
               ListTile(
@@ -221,29 +215,66 @@ class _GroupDetailState extends ConsumerState<GroupDetail> {
                     color: Colors.red),
                 title: const Text('Leave group',
                     style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  ref
+                onTap: () async {
+                  final left = await ref
                       .read(groupsProvider.notifier)
                       .leaveGroup(group.id);
+                  if (!context.mounted) return;
                   Navigator.pop(context);
-                  Navigator.pop(context);
+                  if (left) {
+                    Navigator.pop(context);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Could not leave the group. Please try again.')),
+                    );
+                  }
                 },
               ),
             if (group.isOwner)
               ListTile(
                 leading: const Icon(Icons.settings_outlined),
                 title: const Text('Group settings'),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Group settings are not available yet.')),
+                  );
+                },
               ),
             ListTile(
               leading: const Icon(Icons.flag_outlined,
                   color: Colors.red),
               title: const Text('Report group',
                   style: TextStyle(color: Colors.red)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reporting is not available yet.')),
+                );
+              },
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _joinGroup(
+    BuildContext context,
+    WidgetRef ref,
+    CommunityGroup group,
+  ) async {
+    final joined = await ref.read(groupsProvider.notifier).joinGroup(group.id);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          joined
+              ? 'You joined ${group.name}!'
+              : 'Could not join ${group.name}. Please try again.',
+        ),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -277,11 +308,21 @@ class _GroupHeader extends StatelessWidget {
         children: [
          
           Positioned.fill(
-            child: Image.asset(
-              'assets/mum2.jpg',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox(),
-            ),
+            child: group.imageUrl != null && group.imageUrl!.isNotEmpty
+                ? Image.network(
+                    group.imageUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      'assets/mum2.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const SizedBox(),
+                    ),
+                  )
+                : Image.asset(
+                    'assets/mum2.jpg',
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox(),
+                  ),
           ),
           Container(
             decoration: BoxDecoration(
@@ -368,28 +409,6 @@ class _GroupHeader extends StatelessWidget {
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    ...List.generate(
-                      4,
-                      (i) => Transform.translate(
-                        offset: Offset(i * -8.0, 0),
-                        child: CircleAvatar(
-                          radius: 12,
-                          backgroundColor: Colors.white24,
-                          child: const Icon(Icons.person,
-                              color: Colors.white, size: 14),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Text('Kehinde & 23+ just joined...',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12)),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
                     const Icon(Icons.public,
                         color: Colors.white70, size: 14),
                     const SizedBox(width: 4),
@@ -408,16 +427,9 @@ class _GroupHeader extends StatelessWidget {
                         style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12)),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.tag,
-                        color: Colors.white70, size: 14),
-                    const SizedBox(width: 4),
-                    const Text('200 active today',
-                        style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12)),
                   ],
                 ),
+
                 const SizedBox(height: 16),
                 if (!group.joined)
                   Row(
@@ -569,80 +581,9 @@ class _CircleBtn extends StatelessWidget {
   }
 }
 
-class _TopContributors extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF3E8FF), Color(0xFFE8D5F5)],
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.star,
-                  color: Color(0xFF3F2868), size: 16),
-              SizedBox(width: 6),
-              Text('Top Contributors',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF3F2868),
-                      fontSize: 14)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: const [
-              _ContributorItem(rank: '#1', name: 'Folake'),
-              _ContributorItem(rank: '#2', name: 'Sharon'),
-              _ContributorItem(rank: '#3', name: 'Karen'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _ContributorItem extends StatelessWidget {
-  final String rank;
-  final String name;
 
-  const _ContributorItem(
-      {required this.rank, required this.name});
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        
-        CircleAvatar(
-          radius: 26,
-          backgroundColor: const Color(0xFFE8D5F5),
-          child: const Icon(Icons.person,
-              color: Color(0xFF3F2868), size: 24),
-        ),
-        const SizedBox(height: 6),
-        Text(rank,
-            style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF3F2868))),
-        Text(name,
-            style: const TextStyle(
-                fontSize: 12, color: Color(0xFF1A1A1A))),
-      ],
-    );
-  }
-}
 
 class _NotJoinedState extends StatelessWidget {
   const _NotJoinedState();

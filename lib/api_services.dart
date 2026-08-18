@@ -2,10 +2,10 @@ import 'package:dio/dio.dart';
 
 final dio = Dio(
   BaseOptions(
-    baseUrl: 'https://antarctic-cost-ambulance.ngrok-free.dev',
+    baseUrl: 'https://mummymap-be-staging.up.railway.app/api/v1/',
     headers: {
       'Content-Type': 'application/json',
-      'ngrok-skip-browser-warning': 'true',
+      
     },
   ),
 );

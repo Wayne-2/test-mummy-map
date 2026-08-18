@@ -85,131 +85,39 @@ class WalletTransaction {
         return '${n}th';
     }
   }
+
+  factory WalletTransaction.fromJson(Map<String, dynamic> json) {
+    return WalletTransaction(
+      id: json['id']?.toString() ?? '',
+      type: _parseType(json['type']?.toString()),
+      status: _parseStatus(json['status']?.toString()),
+      amount: double.tryParse(json['amount']?.toString() ?? '0') ?? 0.0,
+      date: json['date'] != null ? DateTime.tryParse(json['date'].toString()) ?? DateTime.now() : DateTime.now(),
+      description: json['description']?.toString() ?? '',
+      senderDetails: json['senderDetails']?.toString(),
+      remark: json['remark']?.toString(),
+      transactionNo: json['transactionNo']?.toString(),
+      sessionId: json['sessionId']?.toString(),
+      paymentMethod: json['paymentMethod']?.toString(),
+      creditedTo: json['creditedTo']?.toString(),
+    );
+  }
+
+  static TransactionType _parseType(String? t) {
+    if (t == null) return TransactionType.transfer;
+    final lower = t.toLowerCase();
+    if (lower.contains('deposit') || lower.contains('topup')) return TransactionType.deposit;
+    if (lower.contains('meal')) return TransactionType.mealPlan;
+    if (lower.contains('doctor') || lower.contains('appointment')) return TransactionType.doctorBooking;
+    return TransactionType.transfer;
+  }
+
+  static TransactionStatus _parseStatus(String? s) {
+    if (s == null) return TransactionStatus.pending;
+    final lower = s.toLowerCase();
+    if (lower.contains('success')) return TransactionStatus.successful;
+    if (lower.contains('fail')) return TransactionStatus.failed;
+    if (lower.contains('revers')) return TransactionStatus.reversed;
+    return TransactionStatus.pending;
+  }
 }
-
-final kWalletTransactions = <WalletTransaction>[
-  WalletTransaction(
-    id: 't1',
-    type: TransactionType.deposit,
-    status: TransactionStatus.successful,
-    amount: 25000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Depositing Funds',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    remark: 'Funds',
-    transactionNo: '25100097846992736324 42',
-    sessionId: '09078573624038475393338593',
-    creditedTo: 'Available Balance',
-    paymentMethod: 'Bank Deposit',
-  ),
-  WalletTransaction(
-    id: 't2',
-    type: TransactionType.mealPlan,
-    status: TransactionStatus.successful,
-    amount: -25000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Meal Plan Purchase',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    transactionNo: '25100097846992736324 42',
-    paymentMethod: 'Wallet',
-  ),
-  WalletTransaction(
-    id: 't3',
-    type: TransactionType.doctorBooking,
-    status: TransactionStatus.successful,
-    amount: -5000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Doctor Appointment Booking',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    transactionNo: '25100097846992736324 42',
-    paymentMethod: 'Wallet',
-  ),
-  WalletTransaction(
-    id: 't4',
-    type: TransactionType.deposit,
-    status: TransactionStatus.successful,
-    amount: 25000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Depositing Funds',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    remark: 'Funds',
-    transactionNo: '25100097846992736324 42',
-    sessionId: '09078573624038475393338593',
-    creditedTo: 'Available Balance',
-    paymentMethod: 'Bank Deposit',
-  ),
-  WalletTransaction(
-    id: 't5',
-    type: TransactionType.mealPlan,
-    status: TransactionStatus.successful,
-    amount: -25000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Meal Plan Purchase',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    transactionNo: '25100097846992736324 42',
-    paymentMethod: 'Wallet',
-  ),
-  WalletTransaction(
-    id: 't6',
-    type: TransactionType.deposit,
-    status: TransactionStatus.successful,
-    amount: 25000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Depositing Funds',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    remark: 'Funds',
-    transactionNo: '25100097846992736324 42',
-    sessionId: '09078573624038475393338593',
-    creditedTo: 'Available Balance',
-    paymentMethod: 'Bank Deposit',
-  ),
-  WalletTransaction(
-    id: 't7',
-    type: TransactionType.doctorBooking,
-    status: TransactionStatus.successful,
-    amount: -5000,
-    date: DateTime(2025, 1, 10, 5, 24),
-    description: 'Doctor Appointment Booking',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    transactionNo: '25100097846992736324 42',
-    paymentMethod: 'Wallet',
-  ),
-  WalletTransaction(
-    id: 't8',
-    type: TransactionType.deposit,
-    status: TransactionStatus.successful,
-    amount: 25000,
-    date: DateTime(2025, 1, 9, 5, 24),
-    description: 'Depositing Funds',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    remark: 'Funds',
-    transactionNo: '25100097846992736324 42',
-    sessionId: '09078573624038475393338593',
-    creditedTo: 'Available Balance',
-    paymentMethod: 'Bank Deposit',
-  ),
-  WalletTransaction(
-    id: 't9',
-    type: TransactionType.mealPlan,
-    status: TransactionStatus.successful,
-    amount: -25000,
-    date: DateTime(2025, 1, 9, 5, 24),
-    description: 'Meal Plan Purchase',
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    transactionNo: '25100097846992736324 42',
-    paymentMethod: 'Wallet',
-  ),
-  WalletTransaction(
-    id: 't10',
-    type: TransactionType.transfer,
-    status: TransactionStatus.successful,
-    amount: -518000,
-    date: DateTime(2025, 10, 8, 10, 21, 50),
-    description: "Transfer to Chef Chi's Kitchen",
-    senderDetails: 'KELLY KIRKLAND GRACE\nKuda MFB | 202****789',
-    transactionNo: '25100097846992736324 42',
-    paymentMethod: 'Wallet',
-  ),
-];
-
-const double kWalletBalance = 26678.00;

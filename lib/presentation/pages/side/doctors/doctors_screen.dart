@@ -90,10 +90,21 @@ class _DoctorsScreenState extends ConsumerState<DoctorsScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Color(0xFFE8D5F5),
-            child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              const CircleAvatar(
+                radius: 20,
+                backgroundColor: Color(0xFFE8D5F5),
+                child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+              ),
+            ],
           ),
           Row(
             mainAxisSize: MainAxisSize.min,

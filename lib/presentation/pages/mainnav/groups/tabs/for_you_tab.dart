@@ -3,13 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/widgets/post_card.dart';
 
-class ForYouTab extends ConsumerWidget {
+class ForYouTab extends ConsumerStatefulWidget {
   final VoidCallback onExplore;
 
   const ForYouTab({super.key, required this.onExplore});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ForYouTab> createState() => _ForYouTabState();
+}
+
+class _ForYouTabState extends ConsumerState<ForYouTab> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(groupsProvider.notifier).loadForYouFeed();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final posts = ref.watch(groupsProvider).forYouPosts;
 
     if (posts.isEmpty) {
@@ -51,7 +64,7 @@ class ForYouTab extends ConsumerWidget {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: onExplore,
+                  onPressed: widget.onExplore,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F2868),
                     shape: RoundedRectangleBorder(

@@ -85,4 +85,8 @@ class AuthRemoteDatasource {
   Future<void> logoutAllDevices() async {
     await dio.post('/api/v1/auth/logout/all');
   }
+
+  Future<void> deleteAccount() async {
+    await dio.delete('/api/v1/users/me');
+  }
 }

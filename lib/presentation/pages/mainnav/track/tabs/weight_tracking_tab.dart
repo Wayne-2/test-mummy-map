@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/track_models.dart';
+import 'package:mummymap/data/models/weight_track_model.dart';
 import 'package:mummymap/presentation/providers/weight_track_provider.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
+import 'package:mummymap/presentation/providers/settings_provider.dart';
 
 class WeightTrackingTab extends ConsumerStatefulWidget {
   const WeightTrackingTab({super.key});
@@ -13,41 +16,68 @@ class WeightTrackingTab extends ConsumerStatefulWidget {
 class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
   bool _showChart = false;
 
-  int _computeWeek(DateTime date) {
-    final start = DateTime(date.year, 1, 1);
-    return ((date.difference(start).inDays) / 7).ceil();
+  int? _gestationalWeek(DateTime date, DateTime? dueDate) {
+    if (dueDate == null) return null;
+    final pregnancyStart = dueDate.subtract(const Duration(days: 280));
+    final days = date.difference(pregnancyStart).inDays;
+    if (days < 0) return null;
+    return (days ~/ 7 + 1).clamp(1, 42).toInt();
   }
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(profileProvider).value;
+    final usesKilograms =
+        ref.watch(settingsProvider).weightUnit == 'Kilograms (kg)';
+    final startWeight = (profile?.weightKg != null && profile!.weightKg! > 0)
+        ? (profile.weightKg! * 2.20462)
+        : kStartWeight;
+
     final weightState = ref.watch(weightTrackProvider);
     final entries = weightState.entries
         .map((e) => WeightEntry(
               date: e.recordedAt,
-              week: e.week ?? _computeWeek(e.recordedAt),
+              week: e.week ?? _gestationalWeek(e.recordedAt, profile?.dueDate) ?? 0,
               weightLb: double.parse(e.weightLb.toStringAsFixed(1)),
             ))
         .toList();
 
     final currentWeight =
-        entries.isEmpty ? kStartWeight : entries.last.weightLb;
-    final gain = currentWeight - kStartWeight;
+        entries.isEmpty ? startWeight : entries.last.weightLb;
+    final gain = currentWeight - startWeight;
 
     return SingleChildScrollView(
       child: Column(
         children: [
           const SizedBox(height: 16),
+          if (weightState.isLoading)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: CircularProgressIndicator(
+                color: Color(0xFF3F2868),
+                strokeWidth: 2,
+              ),
+            ),
+          if (weightState.errorMessage != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text(
+                weightState.errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red, fontSize: 13),
+              ),
+            ),
           _buildViewToggle(),
           const SizedBox(height: 24),
           _showChart
-              ? _buildChart(entries)
-              : _buildDonut(gain, entries.isNotEmpty),
+              ? _buildChart(entries, startWeight)
+              : _buildDonut(gain, entries.isNotEmpty, startWeight, usesKilograms),
           const SizedBox(height: 24),
-          _buildStatRow(currentWeight),
+          _buildStatRow(currentWeight, startWeight, usesKilograms),
           const SizedBox(height: 24),
-          if (!_showChart) _buildWeightTable(entries),
+          if (!_showChart) _buildWeightTable(entries, startWeight, usesKilograms),
           const SizedBox(height: 40),
-          _buildAddButton(context),
+          _buildAddButton(context, usesKilograms, profile?.dueDate),
           const SizedBox(height: 40),
         ],
       ),
@@ -84,9 +114,14 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
     );
   }
 
-  Widget _buildDonut(double gain, bool hasData) {
-    final progress = (gain.abs() / (kTargetWeight - kStartWeight))
-        .clamp(0.0, 1.0);
+  Widget _buildDonut(
+    double gain,
+    bool hasData,
+    double startWeight,
+    bool usesKilograms,
+  ) {
+    final progress = (gain.abs() / (startWeight * 0.2)).clamp(0.0, 1.0);
+    final displayGain = _displayWeight(gain, usesKilograms);
 
     return Center(
       child: SizedBox(
@@ -99,17 +134,17 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  gain == 0
+                  displayGain == 0
                       ? '0'
-                      : '${gain > 0 ? '+' : ''}${gain.toStringAsFixed(1)}',
+                      : '${displayGain > 0 ? '+' : ''}${displayGain.toStringAsFixed(1)}',
                   style: const TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF3F2868),
                   ),
                 ),
-                const Text(
-                  'LB GAIN',
+                Text(
+                  '${usesKilograms ? 'KG' : 'LB'} GAIN',
                   style: TextStyle(
                     fontSize: 12,
                     color: Color(0xFF9E9E9E),
@@ -124,7 +159,7 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
     );
   }
 
-  Widget _buildChart(List<WeightEntry> entries) {
+  Widget _buildChart(List<WeightEntry> entries, double startWeight) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -138,7 +173,10 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
           SizedBox(
             height: 300,
             child: CustomPaint(
-              painter: _WeightChartPainter(entries: entries),
+              painter: _WeightChartPainter(
+                entries: entries,
+                startWeight: startWeight,
+              ),
               child: const SizedBox.expand(),
             ),
           ),
@@ -153,9 +191,9 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _Legend(color: const Color(0xFFFFA726), label: 'Current Weight'),
+              _Legend(color: const Color(0xFFFFA726), label: 'Start Weight'),
               const SizedBox(width: 20),
-              _Legend(color: const Color(0xFF3F2868), label: 'Target Weight'),
+              _Legend(color: const Color(0xFF4CAF50), label: 'Recorded Weight'),
             ],
           ),
         ],
@@ -163,22 +201,26 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
     );
   }
 
-  Widget _buildStatRow(double currentWeight) {
+  Widget _buildStatRow(double currentWeight, double startWeight, bool usesKilograms) {
+    final unit = usesKilograms ? 'KG' : 'LB';
+    final displayCurrent = _displayWeight(currentWeight, usesKilograms);
+    final displayStart = _displayWeight(startWeight, usesKilograms);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _StatCol(label: 'START WEIGHT', value: '${kStartWeight} LB'),
+          _StatCol(label: 'START WEIGHT', value: '${displayStart.toStringAsFixed(1)} $unit'),
           const _VertDivider(),
-          _StatCol(label: 'CURRENT WEIGHT', value: '${currentWeight.toStringAsFixed(1)} LB'),
+          _StatCol(label: 'CURRENT WEIGHT', value: '${displayCurrent.toStringAsFixed(1)} $unit'),
           const _VertDivider(),
-          _StatCol(label: 'TARGET WEIGHT', value: '${kTargetWeight} LB'),
+          const _StatCol(label: 'WEIGHT GOAL', value: 'NOT SET'),
         ],
       ),
     );
   }
 
-  Widget _buildWeightTable(List<WeightEntry> entries) {
+  Widget _buildWeightTable(List<WeightEntry> entries, double startWeight, bool usesKilograms) {
+    final unit = usesKilograms ? 'KG' : 'LB';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -200,9 +242,9 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
             ),
           ),
           ...entries.map((e) {
-            final change = e.weightLb - kStartWeight;
+            final change = _displayWeight(e.weightLb - startWeight, usesKilograms);
             final changeStr =
-                '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)}LB';
+                '${change >= 0 ? '+' : ''}${change.toStringAsFixed(1)} $unit';
             return Container(
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: const BoxDecoration(
@@ -221,14 +263,14 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
                   ),
                   Expanded(
                     child: Text(
-                      '${e.week}',
+                      e.week == 0 ? '—' : '${e.week}',
                       style: const TextStyle(
                           fontSize: 14, color: Color(0xFF1A1A1A)),
                     ),
                   ),
                   Expanded(
                     child: Text(
-                      '${e.weightLb} LB',
+                      '${_displayWeight(e.weightLb, usesKilograms).toStringAsFixed(1)} $unit',
                       style: const TextStyle(
                           fontSize: 14, color: Color(0xFF1A1A1A)),
                     ),
@@ -253,9 +295,13 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
     );
   }
 
-  Widget _buildAddButton(BuildContext context) {
+  Widget _buildAddButton(
+    BuildContext context,
+    bool usesKilograms,
+    DateTime? dueDate,
+  ) {
     return GestureDetector(
-      onTap: () => _showAddWeightDialog(context),
+      onTap: () => _showAddWeightDialog(context, usesKilograms, dueDate),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
         decoration: BoxDecoration(
@@ -281,16 +327,21 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
     );
   }
 
-  void _showAddWeightDialog(BuildContext context) {
+  void _showAddWeightDialog(
+    BuildContext context,
+    bool usesKilograms,
+    DateTime? dueDate,
+  ) {
     showDialog(
       context: context,
       builder: (_) => _AddWeightDialog(
-        onAdd: (wholePart, decimalPart, date) async {
-          final weight = wholePart + decimalPart / 10;
-          final error = await ref.read(weightTrackProvider.notifier).addWeightLb(
-                weight,
+        initialUnit: usesKilograms ? 'KG' : 'LB',
+        onAdd: (weight, unit, date) async {
+          final weightKg = unit == 'KG' ? weight : lbToKg(weight);
+          final error = await ref.read(weightTrackProvider.notifier).addWeightKg(
+                weightKg,
                 date,
-                week: _computeWeek(date),
+                week: _gestationalWeek(date, dueDate),
               );
           if (error != null && context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -306,6 +357,9 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
     );
   }
 
+  double _displayWeight(double weightLb, bool usesKilograms) =>
+      usesKilograms ? lbToKg(weightLb) : weightLb;
+
 
 
   String _monthName(int month) {
@@ -318,9 +372,10 @@ class _WeightTrackingTabState extends ConsumerState<WeightTrackingTab> {
 }
 
 class _AddWeightDialog extends StatefulWidget {
-  final void Function(double whole, double decimal, DateTime date) onAdd;
+  final void Function(double weight, String unit, DateTime date) onAdd;
+  final String initialUnit;
 
-  const _AddWeightDialog({required this.onAdd});
+  const _AddWeightDialog({required this.onAdd, required this.initialUnit});
 
   @override
   State<_AddWeightDialog> createState() => _AddWeightDialogState();
@@ -328,10 +383,17 @@ class _AddWeightDialog extends StatefulWidget {
 
 class _AddWeightDialogState extends State<_AddWeightDialog> {
   DateTime _selectedDate = DateTime.now();
-  String _unit = 'LB';
+  late String _unit;
   double _whole = 133;
   double _decimal = 3;
   bool _showCalendar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _unit = widget.initialUnit;
+    if (_unit == 'KG') _whole = 60;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -370,7 +432,17 @@ class _AddWeightDialogState extends State<_AddWeightDialog> {
               _UnitDropdown(
                 value: _unit,
                 onChanged: (v) {
-                  if (v != null) setState(() => _unit = v);
+                  if (v == null || v == _unit) return;
+                  final current = _whole + _decimal / 10;
+                  final converted = v == 'KG' ? lbToKg(current) : kgToLb(current);
+                  setState(() {
+                    _unit = v;
+                    _whole = converted.floorToDouble();
+                    _decimal = ((converted - _whole) * 10)
+                        .roundToDouble()
+                        .clamp(0, 9)
+                        .toDouble();
+                  });
                 },
               ),
               const SizedBox(width: 8),
@@ -394,8 +466,8 @@ class _AddWeightDialogState extends State<_AddWeightDialog> {
             children: [
               _NumberScroller(
                 value: _whole,
-                min: 80,
-                max: 200,
+                min: _unit == 'KG' ? 30 : 66,
+                max: _unit == 'KG' ? 250 : 550,
                 onChanged: (v) => setState(() => _whole = v),
               ),
               const Padding(
@@ -449,7 +521,7 @@ class _AddWeightDialogState extends State<_AddWeightDialog> {
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: () {
-                  widget.onAdd(_whole, _decimal, _selectedDate);
+                  widget.onAdd(_whole + _decimal / 10, _unit, _selectedDate);
                   Navigator.pop(context);
                 },
                 child: Container(
@@ -564,12 +636,17 @@ class _AddWeightDialogState extends State<_AddWeightDialog> {
                   final day = index - startWeekday + 1;
                   final date = DateTime(
                       _focusedMonth.year, _focusedMonth.month, day);
+                  final isFuture = date.isAfter(
+                    DateTime(DateTime.now().year, DateTime.now().month,
+                        DateTime.now().day),
+                  );
                   final isSelected = date.year == _selectedDate.year &&
                       date.month == _selectedDate.month &&
                       date.day == _selectedDate.day;
                   return GestureDetector(
-                    onTap: () =>
-                        setLocalState(() => _selectedDate = date),
+                    onTap: isFuture
+                        ? null
+                        : () => setLocalState(() => _selectedDate = date),
                     child: Container(
                       margin: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
@@ -585,7 +662,9 @@ class _AddWeightDialogState extends State<_AddWeightDialog> {
                             fontSize: 13,
                             color: isSelected
                                 ? Colors.white
-                                : const Color(0xFF1A1A1A),
+                                : isFuture
+                                    ? const Color(0xFFBDBDBD)
+                                    : const Color(0xFF1A1A1A),
                             fontWeight: isSelected
                                 ? FontWeight.bold
                                 : FontWeight.normal,
@@ -789,8 +868,12 @@ class _DonutPainter extends CustomPainter {
 
 class _WeightChartPainter extends CustomPainter {
   final List<WeightEntry> entries;
+  final double startWeight;
 
-  _WeightChartPainter({required this.entries});
+  _WeightChartPainter({
+    required this.entries,
+    required this.startWeight,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -801,8 +884,14 @@ class _WeightChartPainter extends CustomPainter {
       const Color(0xFFBBDEFB).withOpacity(0.4),
     ];
 
-    final minWeight = 128.0;
-    final maxWeight = 168.0;
+    var minWeight = startWeight - 10.0;
+    var maxWeight = startWeight + 10.0;
+    for (final entry in entries) {
+      minWeight = entry.weightLb < minWeight ? entry.weightLb : minWeight;
+      maxWeight = entry.weightLb > maxWeight ? entry.weightLb : maxWeight;
+    }
+    minWeight -= 5;
+    maxWeight += 5;
     final weekRange = 40.0;
 
     double xForWeek(int week) =>
@@ -858,12 +947,14 @@ class _WeightChartPainter extends CustomPainter {
     }
 
     final currentPath = Path();
-    currentPath.moveTo(xForWeek(0), yForWeight(kStartWeight));
-    currentPath.lineTo(xForWeek(13), yForWeight(135.0));
-    currentPath.lineTo(xForWeek(26), yForWeight(144.0));
+    currentPath.moveTo(xForWeek(0), yForWeight(startWeight));
     if (entries.isNotEmpty) {
-      currentPath.lineTo(xForWeek(entries.last.week),
-          yForWeight(entries.last.weightLb));
+      for (final entry in entries) {
+        currentPath.lineTo(
+          xForWeek(entry.week.clamp(0, 40).toInt()),
+          yForWeight(entry.weightLb),
+        );
+      }
     }
 
     canvas.drawPath(
@@ -875,44 +966,12 @@ class _WeightChartPainter extends CustomPainter {
         ..strokeCap = StrokeCap.round,
     );
 
-    final targetPath = Path();
-    targetPath.moveTo(xForWeek(26), yForWeight(148.0));
-    targetPath.lineTo(xForWeek(40), yForWeight(kTargetWeight));
-
-    canvas.drawPath(
-      targetPath,
-      Paint()
-        ..color = const Color(0xFF3F2868)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round,
-    );
-
     canvas.drawCircle(
-      Offset(xForWeek(0), yForWeight(kStartWeight)),
+      Offset(xForWeek(0), yForWeight(startWeight)),
       5,
       Paint()..color = const Color(0xFFFFA726),
     );
 
-    canvas.drawCircle(
-      Offset(xForWeek(40), yForWeight(kTargetWeight)),
-      5,
-      Paint()..color = const Color(0xFF3F2868),
-    );
-
-    final targetLabel = TextPainter(
-      text: const TextSpan(
-        text: 'Target\n162.3',
-        style: TextStyle(fontSize: 9, color: Color(0xFF3F2868)),
-      ),
-      textAlign: TextAlign.center,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    targetLabel.paint(
-      canvas,
-      Offset(size.width - targetLabel.width - 4,
-          yForWeight(kTargetWeight) - 30),
-    );
 
     for (final week in weeks) {
       final tp = TextPainter(
@@ -929,7 +988,8 @@ class _WeightChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_WeightChartPainter old) =>
-      old.entries != entries;
+      old.entries != entries ||
+      old.startWeight != startWeight;
 }
 
 class _Legend extends StatelessWidget {

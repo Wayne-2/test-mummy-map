@@ -93,7 +93,12 @@ class _PostDetailState extends ConsumerState<PostDetail> {
                   const Icon(Icons.flag_outlined, color: Colors.red),
               title: const Text('Report post',
                   style: TextStyle(color: Colors.red)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reporting is not available yet.')),
+                );
+              },
             ),
             if (ref.read(groupsProvider.notifier).isMyPost(post))
               ListTile(
@@ -496,7 +501,12 @@ class _ReplyItem extends ConsumerWidget {
                   color: Colors.red),
               title: const Text('Report reply',
                   style: TextStyle(color: Colors.red)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reporting is not available yet.')),
+                );
+              },
             ),
             if (ref.read(groupsProvider.notifier).isMyReply(reply))
               ListTile(
@@ -576,34 +586,25 @@ class _ReplyItem extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => ref
-                          .read(groupsProvider.notifier)
-                          .toggleLikeReply(postId, reply.id),
-                      child: Row(
-                        children: [
-                          Icon(
-                            isLiked
-                                ? Icons.favorite
-                                : Icons.favorite_outline,
-                            size: 16,
-                            color: isLiked
-                                ? Colors.red
-                                : Colors.grey.shade400,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isLiked
-                                ? '${reply.likedBy.length}'
-                                : 'Like',
-                            style: TextStyle(
-                                fontSize: 12,
-                                color: isLiked
-                                    ? Colors.red
-                                    : Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
+                    Row(
+                      children: [
+                        Icon(
+                          isLiked ? Icons.favorite : Icons.favorite_outline,
+                          size: 16,
+                          color: isLiked ? Colors.red : Colors.grey.shade400,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          reply.likedBy.isEmpty
+                              ? 'Like'
+                              : '${reply.likedBy.length}',
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: isLiked
+                                  ? Colors.red
+                                  : Colors.grey.shade500),
+                        ),
+                      ],
                     ),
                     const SizedBox(width: 16),
                     Icon(Icons.chat_bubble_outline,

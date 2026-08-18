@@ -60,7 +60,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _onFirstChildChanged(String? v) {
-    ref.read(settingsProvider.notifier).setFirstChild(v);
     final base = _profile ?? ProfileModel();
     _patchProfile(base.copyWith(
       numberOfChildren: ProfileMappers.firstChildToCount(v),
@@ -68,7 +67,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _onBabyBornChanged(bool v) {
-    ref.read(settingsProvider.notifier).setBabyAlreadyBorn(v);
     final base = _profile ?? ProfileModel();
     _patchProfile(base.copyWith(isPregnant: !v));
   }
@@ -112,6 +110,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final notifier = ref.read(settingsProvider.notifier);
 
     final bloodDisplay = ProfileMappers.bloodTypeToDisplay(profile?.bloodType);
+    final firstChild = profile?.numberOfChildren == 0
+        ? 'Yes'
+        : (profile?.numberOfChildren != null ? 'No' : null);
+    final babyAlreadyBorn = profile?.isPregnant == false;
     final dobText = profile?.dateOfBirth != null
         ? DateFormat('MMM d, yyyy').format(profile!.dateOfBirth!)
         : null;
@@ -193,7 +195,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _buildDropdownItem(
                       icon: Icons.child_friendly_outlined,
                       label: 'First Child?',
-                      value: settings.firstChild,
+                      value: firstChild,
                       hint: 'Select',
                       items: const ['Yes', 'No'],
                       onChanged: _onFirstChildChanged,
@@ -202,7 +204,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     _buildToggleItem(
                       icon: Icons.baby_changing_station_outlined,
                       label: 'Baby Already Born?',
-                      value: settings.babyAlreadyBorn,
+                      value: babyAlreadyBorn,
                       onChanged: _onBabyBornChanged,
                     ),
                     _buildDivider(),
@@ -338,7 +340,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                     _buildDivider(),
                     const SizedBox(height: 32),
-                    _buildSignOutButton(context),
+                    _buildDeleteAccountButton(context),
                     const SizedBox(height: 20),
                     _buildFooter(settings, profile),
                     const SizedBox(height: 32),
@@ -688,27 +690,27 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildSignOutButton(BuildContext context) {
+  Widget _buildDeleteAccountButton(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
         width: double.infinity,
         height: 52,
         child: ElevatedButton(
-          onPressed: () => _confirmSignOut(context),
+          onPressed: () => _confirmDeleteAccount(context),
           style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF3F2868),
+            backgroundColor: Colors.red.shade50,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(30),
             ),
             elevation: 0,
           ),
           child: const Text(
-            'Sign Out',
+            'Delete Account',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: Colors.red,
             ),
           ),
         ),
@@ -741,7 +743,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return months[month];
   }
 
-  void _confirmSignOut(BuildContext context) {
+  void _confirmDeleteAccount(BuildContext context) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -762,7 +764,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Sign Out',
+              'Delete Account',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -771,7 +773,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Are you sure you want to sign out?',
+              'Are you sure you want to delete your account? This action cannot be undone.',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 14, color: Color(0xFF9E9E9E)),
             ),
@@ -803,7 +805,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   child: ElevatedButton(
                     onPressed: () async {
                       Navigator.pop(context);
-                      await _signOut(context);
+                      await _deleteAccount(context);
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.red,
@@ -814,7 +816,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       elevation: 0,
                     ),
                     child: const Text(
-                      'Sign Out',
+                      'Delete Account',
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
@@ -832,10 +834,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Future<void> _signOut(BuildContext context) async {
+  Future<void> _deleteAccount(BuildContext context) async {
     try {
       await ref.read(settingsProvider.notifier).clear();
-      await ref.read(authRepositoryProvider).logoutCurrentDevice();
+      await ref.read(authRepositoryProvider).deleteAccount();
     } catch (_) {}
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(

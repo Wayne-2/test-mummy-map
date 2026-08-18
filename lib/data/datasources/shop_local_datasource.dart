@@ -9,8 +9,8 @@ class ShopLocalDataSource {
 
   Box<String> get _box => Hive.box<String>(_boxName);
 
-  Future<List<CartItem>> getCart() async {
-    final json = _box.get(_cartKey);
+  Future<List<CartItem>> getCart(String userId) async {
+    final json = _box.get('${_cartKey}_$userId');
     if (json == null) return [];
     try {
       final List decoded = jsonDecode(json) as List;
@@ -22,15 +22,15 @@ class ShopLocalDataSource {
     }
   }
 
-  Future<void> saveCart(List<CartItem> items) async {
+  Future<void> saveCart(String userId, List<CartItem> items) async {
     await _box.put(
-      _cartKey,
+      '${_cartKey}_$userId',
       jsonEncode(items.map((e) => e.toJson()).toList()),
     );
   }
 
-  Future<List<String>> getWishlist() async {
-    final json = _box.get(_wishlistKey);
+  Future<List<String>> getWishlist(String userId) async {
+    final json = _box.get('${_wishlistKey}_$userId');
     if (json == null) return [];
     try {
       return List<String>.from(jsonDecode(json) as List);
@@ -39,11 +39,11 @@ class ShopLocalDataSource {
     }
   }
 
-  Future<void> saveWishlist(List<String> ids) async {
-    await _box.put(_wishlistKey, jsonEncode(ids));
+  Future<void> saveWishlist(String userId, List<String> ids) async {
+    await _box.put('${_wishlistKey}_$userId', jsonEncode(ids));
   }
 
-  Future<void> clearCart() async {
-    await _box.delete(_cartKey);
+  Future<void> clearCart(String userId) async {
+    await _box.delete('${_cartKey}_$userId');
   }
 }

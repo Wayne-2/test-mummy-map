@@ -85,9 +85,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(profileProvider);
+    final profile = state.value;
     final settings = ref.watch(settingsProvider);
     final pregnancy = ref.watch(pregnancyProvider);
-    final profile = state.value;
+
+    final firstChild = profile?.numberOfChildren == 0
+        ? 'Yes'
+        : (profile?.numberOfChildren != null ? 'No' : null);
+    final babyAlreadyBorn = profile?.isPregnant == false;
 
     return Scaffold(
       backgroundColor: const Color(0xFFFAFAFA),
@@ -145,10 +150,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   _dropdownTile(
                     icon: Icons.child_friendly_outlined,
                     label: 'First Child?',
-                    value: settings.firstChild,
+                    value: firstChild,
                     items: const ['Yes', 'No'],
                     onChanged: (v) {
-                      ref.read(settingsProvider.notifier).setFirstChild(v);
                       _patch((_profile ?? ProfileModel()).copyWith(
                         numberOfChildren:
                             ProfileMappers.firstChildToCount(v),
@@ -158,9 +162,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   _toggleTile(
                     icon: Icons.baby_changing_station_outlined,
                     label: 'Baby Already Born?',
-                    value: settings.babyAlreadyBorn,
+                    value: babyAlreadyBorn,
                     onChanged: (v) {
-                      ref.read(settingsProvider.notifier).setBabyAlreadyBorn(v);
                       _patch((_profile ?? ProfileModel())
                           .copyWith(isPregnant: !v));
                     },

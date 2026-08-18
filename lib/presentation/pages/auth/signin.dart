@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:mummymap/presentation/pages/auth/forgot_password.dart';
 import 'package:mummymap/presentation/pages/auth/signup.dart';
-import 'package:mummymap/presentation/pages/auth/verify_otp.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 
@@ -46,7 +44,14 @@ class _SignInState extends ConsumerState<SignIn> {
 
       if (!mounted) return;
 
-      context.push('/verify-otp', extra: email);
+      context.push(
+        '/verify-otp',
+        extra: {
+          'email': email,
+          'password': password,
+          'isSignup': false,
+        },
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

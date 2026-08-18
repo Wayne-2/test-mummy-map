@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/wallet_model.dart';
+import 'package:mummymap/presentation/providers/wallet_provider.dart';
 import 'package:mummymap/presentation/pages/side/wallet/widget/wallet_widgets.dart';
 import 'transaction_detail_screen.dart';
 
-class TransactionsScreen extends StatefulWidget {
+class TransactionsScreen extends ConsumerStatefulWidget {
   const TransactionsScreen({super.key});
 
   @override
-  State<TransactionsScreen> createState() => _TransactionsScreenState();
+  ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
 }
 
-class _TransactionsScreenState extends State<TransactionsScreen> {
+class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   final _searchController = TextEditingController();
   String _query = '';
 
-  List<WalletTransaction> get _filtered {
-    if (_query.isEmpty) return kWalletTransactions;
-    return kWalletTransactions
+  List<WalletTransaction> _getFiltered(List<WalletTransaction> transactions) {
+    if (_query.isEmpty) return transactions;
+    return transactions
         .where((tx) =>
             tx.description.toLowerCase().contains(_query.toLowerCase()))
         .toList();
@@ -30,7 +32,10 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = groupByDate(_filtered);
+    final txAsync = ref.watch(walletTransactionsProvider);
+    final transactions = txAsync.value ?? [];
+    final filtered = _getFiltered(transactions);
+    final grouped = groupByDate(filtered);
 
     return Scaffold(
       backgroundColor: Colors.white,

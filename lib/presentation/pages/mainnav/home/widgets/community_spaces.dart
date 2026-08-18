@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/presentation/pages/mainnav/groups/tabs/explore_tab.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/providers/groups_provider.dart';
 
-class CommunitySpaces extends StatelessWidget {
-  const CommunitySpaces({super.key, VoidCallback? onExploreGroups});
-  
-  get navigator => ExploreTab();
+class CommunitySpaces extends ConsumerWidget {
+  final VoidCallback? onExploreGroups;
+
+  const CommunitySpaces({super.key, this.onExploreGroups});
 
   @override
-  Widget build(BuildContext context) {
-    final List groups = [];
+  Widget build(BuildContext context, WidgetRef ref) {
+    final joinedGroups = ref.watch(groupsProvider).joinedGroups;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -24,7 +25,7 @@ class CommunitySpaces extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          groups.isEmpty
+          joinedGroups.isEmpty
               ? Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(24),
@@ -60,7 +61,7 @@ class CommunitySpaces extends StatelessWidget {
                         width: 160,
                         height: 44,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExploreTab())),
+                          onPressed: onExploreGroups,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF3F2868),
                             shape: RoundedRectangleBorder(
@@ -81,7 +82,67 @@ class CommunitySpaces extends StatelessWidget {
                     ],
                   ),
                 )
-              : const SizedBox(),
+              : Column(
+                  children: joinedGroups.map((group) {
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE0E0E0)),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: Color(group.avatarColor),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: Text(
+                                group.initials,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  group.name,
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF1A1A1A),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${group.members} Members',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF9E9E9E),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right,
+                              color: Color(0xFFBDBDBD)),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
         ],
       ),
     );

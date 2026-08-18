@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:mummymap/data/models/wallet_model.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:uuid/uuid.dart';
+import 'package:mummymap/presentation/providers/wallet_provider.dart';
 import 'package:mummymap/presentation/pages/side/wallet/widget/wallet_widgets.dart';
 import 'transactions_screen.dart';
 import 'transaction_detail_screen.dart';
 import 'wallet_balance_details_screen.dart';
 
-class WalletScreen extends StatefulWidget {
+class WalletScreen extends ConsumerStatefulWidget {
   const WalletScreen({super.key});
 
   @override
-  State<WalletScreen> createState() => _WalletScreenState();
+  ConsumerState<WalletScreen> createState() => _WalletScreenState();
 }
 
-class _WalletScreenState extends State<WalletScreen> {
+class _WalletScreenState extends ConsumerState<WalletScreen> {
   bool _balanceVisible = true;
-  double _balance = kWalletBalance;
 
   @override
   Widget build(BuildContext context) {
@@ -49,10 +51,21 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const CircleAvatar(
-            radius: 20,
-            backgroundColor: Color(0xFFE8D5F5),
-            child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back, color: Color(0xFF1A1A1A)),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+              const SizedBox(width: 12),
+              const CircleAvatar(
+                radius: 20,
+                backgroundColor: Color(0xFFE8D5F5),
+                child: Icon(Icons.person, color: Color(0xFF3F2868), size: 22),
+              ),
+            ],
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -100,6 +113,9 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildHeroCard(BuildContext context) {
+    final balanceAsync = ref.watch(walletBalanceProvider);
+    final _balance = balanceAsync.value ?? 0.0;
+
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 0),
@@ -220,7 +236,9 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildTransactionHistory(BuildContext context) {
-    final preview = kWalletTransactions.take(5).toList();
+    final txAsync = ref.watch(walletTransactionsProvider);
+    final transactions = txAsync.value ?? [];
+    final preview = transactions.take(5).toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -285,9 +303,75 @@ class _WalletScreenState extends State<WalletScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => _DepositSheet(
-        onDeposit: (amount) {
-          setState(() => _balance += amount);
+        onDeposit: (amount) async {
+          final reference = const Uuid().v4();
+          final idempotencyKey = const Uuid().v4();
+          
+          final result = await ref.read(walletNotifierProvider.notifier).initiateTopup(
+            amount: amount,
+            reference: reference,
+            idempotencyKey: idempotencyKey,
+          );
+          
+          if (result != null && result['authorizationUrl'] != null) {
+            final urlStr = result['authorizationUrl'].toString();
+            final url = Uri.tryParse(urlStr);
+            if (url != null && await canLaunchUrl(url)) {
+              await launchUrl(url, mode: LaunchMode.externalApplication);
+              if (mounted) {
+                _showVerificationDialog(context, reference);
+              }
+            } else {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not open payment link')),
+                );
+              }
+            }
+          } else {
+             if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to initiate topup')),
+                );
+              }
+          }
         },
+      ),
+    );
+  }
+
+  void _showVerificationDialog(BuildContext context, String reference) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verify Payment'),
+        content: const Text('Did you complete the payment successfully?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final success = await ref.read(walletNotifierProvider.notifier).verifyTopup(reference);
+              if (mounted) {
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment verified successfully!')),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Payment verification failed. Please try again later.')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3F2868)),
+            child: const Text('I have paid', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -336,7 +420,7 @@ class _HeroButton extends StatelessWidget {
 }
 
 class _DepositSheet extends StatefulWidget {
-  final ValueChanged<double> onDeposit;
+  final Future<void> Function(double) onDeposit;
 
   const _DepositSheet({required this.onDeposit});
 
@@ -420,15 +504,14 @@ class _DepositSheetState extends State<_DepositSheet> {
                 onPressed: _isLoading
                     ? null
                     : () async {
-                        final amount =
-                            double.tryParse(_controller.text) ?? 0;
+                        final amount = double.tryParse(_controller.text) ?? 0;
                         if (amount <= 0) return;
                         setState(() => _isLoading = true);
-                        await Future.delayed(
-                            const Duration(seconds: 2));
-                        if (!mounted) return;
-                        widget.onDeposit(amount);
-                        Navigator.pop(context);
+                        await widget.onDeposit(amount);
+                        if (mounted) {
+                          setState(() => _isLoading = false);
+                          Navigator.pop(context);
+                        }
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),

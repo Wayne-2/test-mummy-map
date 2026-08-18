@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:mummymap/data/models/track_models.dart';  
 
-class ExercisesTab extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/presentation/providers/exercise_provider.dart';
+
+class ExercisesTab extends ConsumerStatefulWidget {
   const ExercisesTab({super.key});
 
   @override
-  State<ExercisesTab> createState() => _ExercisesTabState();
+  ConsumerState<ExercisesTab> createState() => _ExercisesTabState();
 }
 
-class _ExercisesTabState extends State<ExercisesTab> {
+class _ExercisesTabState extends ConsumerState<ExercisesTab> {
   int _selectedLevel = 1;
 
   ExerciseLevel get _currentLevel =>
@@ -45,8 +48,8 @@ class _ExercisesTabState extends State<ExercisesTab> {
         itemBuilder: (context, index) {
           final level = index + 1;
           final isSelected = _selectedLevel == level;
-          final isCompleted =
-              kExerciseLevels[index].days.every((d) => d.completed);
+          
+          final exerciseState = ref.watch(exerciseProvider);
 
           return GestureDetector(
             onTap: () {
@@ -177,12 +180,15 @@ class _ExercisesTabState extends State<ExercisesTab> {
             width: double.infinity,
             height: 52,
             child: ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const TrainingScreen(),
-                ),
-              ),
+              onPressed: () {
+                ref.read(exerciseProvider.notifier).toggleDayCompletion(1, 1);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TrainingScreen(),
+                  ),
+                );
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF3F2868),
                 shape: RoundedRectangleBorder(
@@ -214,16 +220,22 @@ class _ExercisesTabState extends State<ExercisesTab> {
             ),
           ),
           const SizedBox(height: 24),
-          ..._currentLevel.days.skip(1).map((day) =>
-              _DayItem(
+          ..._currentLevel.days.skip(1).map((day) {
+              final isCompleted = ref.watch(exerciseProvider).isCompleted(1, day.dayNumber);
+              return _DayItem(
                 day: day,
-                onStart: () => Navigator.push(
+                isCompleted: isCompleted,
+                onStart: () {
+                  ref.read(exerciseProvider.notifier).toggleDayCompletion(1, day.dayNumber);
+                  Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (_) => const TrainingScreen(),
                   ),
-                ),
-              )),
+                );
+              },
+            );
+          }),
         ],
       ),
     );
@@ -233,17 +245,24 @@ class _ExercisesTabState extends State<ExercisesTab> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
-        children: _currentLevel.days
-            .map((day) => _DayItem(
-                  day: day,
-                  onStart: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const TrainingScreen(),
-                    ),
+        children: [
+          ..._currentLevel.days.map((day) {
+            final isCompleted = ref.watch(exerciseProvider).isCompleted(_selectedLevel, day.dayNumber);
+            return _DayItem(
+              day: day,
+              isCompleted: isCompleted,
+              onStart: () {
+                ref.read(exerciseProvider.notifier).toggleDayCompletion(_selectedLevel, day.dayNumber);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const TrainingScreen(),
                   ),
-                ))
-            .toList(),
+                );
+              },
+            );
+          }),
+        ],
       ),
     );
   }
@@ -275,9 +294,10 @@ class _ExercisesTabState extends State<ExercisesTab> {
 
 class _DayItem extends StatelessWidget {
   final ExerciseDay day;
+  final bool isCompleted;
   final VoidCallback onStart;
 
-  const _DayItem({required this.day, required this.onStart});
+  const _DayItem({required this.day, required this.isCompleted, required this.onStart});
 
   @override
   Widget build(BuildContext context) {
@@ -296,17 +316,17 @@ class _DayItem extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: day.completed
+              color: isCompleted
                   ? const Color(0xFF3F2868)
                   : Colors.transparent,
               border: Border.all(
-                color: day.completed
+                color: isCompleted
                     ? const Color(0xFF3F2868)
                     : const Color(0xFFBDBDBD),
                 width: 1.5,
               ),
             ),
-            child: day.completed
+            child: isCompleted
                 ? const Icon(Icons.check, color: Colors.white, size: 18)
                 : null,
           ),

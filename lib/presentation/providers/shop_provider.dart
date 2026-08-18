@@ -5,6 +5,7 @@ import 'package:mummymap/data/models/shop_product_model.dart';
 import 'package:mummymap/data/repositories/shop_repository_impl.dart';
 import 'package:mummymap/domain/repositories/shop_repository.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
 
 final shopLocalDataSourceProvider = Provider((_) => ShopLocalDataSource());
 
@@ -13,9 +14,12 @@ final shopRemoteDataSourceProvider = Provider(
 );
 
 final shopRepositoryProvider = Provider<ShopRepository>((ref) {
+  final profile = ref.watch(profileProvider).value;
+  final userId = profile?.userId ?? '';
   return ShopRepositoryImpl(
     ref.read(shopLocalDataSourceProvider),
     ref.read(shopRemoteDataSourceProvider),
+    userId,
   );
 });
 

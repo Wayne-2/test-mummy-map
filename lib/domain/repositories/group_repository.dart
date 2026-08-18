@@ -5,13 +5,14 @@ import 'package:mummymap/data/models/group_model.dart';
 class GroupRepository {
   final GroupRemoteDatasource datasource;
   final GroupLocalDatasource localDatasource;
+  final String userId;
 
-  GroupRepository(this.datasource, this.localDatasource);
+  GroupRepository(this.datasource, this.localDatasource, this.userId);
 
   Future<List<CommunityGroup>> getLocalGroups({
     required String currentUserId,
   }) async {
-    final raw = await localDatasource.getLocalGroups();
+    final raw = await localDatasource.getLocalGroups(userId);
     if (raw == null) return [];
     return raw
         .map((e) => CommunityGroup.fromJson(e, currentUserId: currentUserId))
@@ -32,7 +33,7 @@ class GroupRepository {
       limit: limit,
     );
     if (page == 1 && search == null && tags == null) {
-      await localDatasource.saveGroups(raw);
+      await localDatasource.saveGroups(userId, raw);
     }
     return raw
         .map((e) => CommunityGroup.fromJson(e, currentUserId: currentUserId))
@@ -65,7 +66,7 @@ class GroupRepository {
     required int groupColor,
     required String groupInitials,
   }) async {
-    final raw = await localDatasource.getLocalGroupPosts(groupId);
+    final raw = await localDatasource.getLocalGroupPosts(userId, groupId);
     if (raw == null) return [];
     return raw
         .map((e) => GroupPost.fromJson(
@@ -94,7 +95,7 @@ class GroupRepository {
       limit: limit,
     );
     if (page == 1 && sortBy == 'latest') {
-      await localDatasource.saveGroupPosts(groupId, raw);
+      await localDatasource.saveGroupPosts(userId, groupId, raw);
     }
     return raw
         .map((e) => GroupPost.fromJson(
@@ -146,4 +147,13 @@ class GroupRepository {
   Future<void> likePost(String postId) => datasource.likePost(postId);
 
   Future<void> unlikePost(String postId) => datasource.unlikePost(postId);
+
+  Future<void> invalidateGroupsCache() => localDatasource.clearGroups(userId);
+
+  Future<void> invalidateGroupPostsCache(String groupId) =>
+      localDatasource.clearGroupPosts(userId, groupId);
+
+  Future<void> saveBookmarks(List<String> bookmarks) => localDatasource.saveBookmarks(userId, bookmarks);
+
+  Future<List<String>> getBookmarks() => localDatasource.getBookmarks(userId);
 }

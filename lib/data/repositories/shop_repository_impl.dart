@@ -6,8 +6,9 @@ import 'package:mummymap/domain/repositories/shop_repository.dart';
 class ShopRepositoryImpl implements ShopRepository {
   final ShopLocalDataSource _local;
   final ShopRemoteDataSource _remote;
+  final String userId;
 
-  ShopRepositoryImpl(this._local, this._remote);
+  ShopRepositoryImpl(this._local, this._remote, this.userId);
 
   @override
   Future<List<ShopProduct>> getProducts({
@@ -23,16 +24,16 @@ class ShopRepositoryImpl implements ShopRepository {
   }
 
   @override
-  Future<List<CartItem>> getLocalCart() => _local.getCart();
+  Future<List<CartItem>> getLocalCart() => _local.getCart(userId);
 
   @override
   Future<List<CartItem>> getCart() async {
     try {
       final cart = await _remote.getCart();
-      await _local.saveCart(cart);
+      await _local.saveCart(userId, cart);
       return cart;
     } catch (_) {
-      return _local.getCart();
+      return _local.getCart(userId);
     }
   }
 
@@ -40,11 +41,11 @@ class ShopRepositoryImpl implements ShopRepository {
   Future<List<CartItem>> addToCart(ShopProduct product, int quantity) async {
     try {
       final cart = await _remote.addToCart(product.id, quantity);
-      await _local.saveCart(cart);
+      await _local.saveCart(userId, cart);
       return cart;
     } catch (_) {
-      final merged = _mergeLocal(await _local.getCart(), product, quantity);
-      await _local.saveCart(merged);
+      final merged = _mergeLocal(await _local.getCart(userId), product, quantity);
+      await _local.saveCart(userId, merged);
       return merged;
     }
   }
@@ -54,10 +55,10 @@ class ShopRepositoryImpl implements ShopRepository {
       ShopProduct product, int quantity) async {
     try {
       final cart = await _remote.updateCartItem(product.id, quantity);
-      await _local.saveCart(cart);
+      await _local.saveCart(userId, cart);
       return cart;
     } catch (_) {
-      final current = await _local.getCart();
+      final current = await _local.getCart(userId);
       final updated = <CartItem>[];
       for (final item in current) {
         if (item.product.id == product.id) {
@@ -66,7 +67,7 @@ class ShopRepositoryImpl implements ShopRepository {
           updated.add(item);
         }
       }
-      await _local.saveCart(updated);
+      await _local.saveCart(userId, updated);
       return updated;
     }
   }
@@ -76,22 +77,22 @@ class ShopRepositoryImpl implements ShopRepository {
     try {
       await _remote.clearCart();
     } catch (_) {}
-    await _local.clearCart();
+    await _local.clearCart(userId);
     return const [];
   }
 
   @override
   Future<String> placeOrder({String? notes}) async {
     final orderId = await _remote.placeOrder(notes: notes);
-    await _local.clearCart();
+    await _local.clearCart(userId);
     return orderId;
   }
 
   @override
-  Future<List<String>> getWishlist() => _local.getWishlist();
+  Future<List<String>> getWishlist() => _local.getWishlist(userId);
 
   @override
-  Future<void> saveWishlist(List<String> ids) => _local.saveWishlist(ids);
+  Future<void> saveWishlist(List<String> ids) => _local.saveWishlist(userId, ids);
 
   List<CartItem> _mergeLocal(
       List<CartItem> current, ShopProduct product, int quantity) {

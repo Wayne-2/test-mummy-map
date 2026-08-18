@@ -3,6 +3,7 @@ import 'package:mummymap/data/datasources/article_remote_datasource.dart';
 import 'package:mummymap/data/models/article_model.dart';
 import 'package:mummymap/domain/repositories/article_repository.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
 
 import 'package:mummymap/data/datasources/article_local_datasource.dart';
 
@@ -15,9 +16,12 @@ final articleDatasourceProvider = Provider<ArticleRemoteDatasource>((ref) {
 });
 
 final articleRepositoryProvider = Provider<ArticleRepository>((ref) {
+  final profile = ref.watch(profileProvider).value;
+  final userId = profile?.userId ?? '';
   return ArticleRepository(
     ref.read(articleLocalDatasourceProvider),
     ref.read(articleDatasourceProvider),
+    userId,
   );
 });
 

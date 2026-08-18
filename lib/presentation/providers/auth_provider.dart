@@ -6,11 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:mummymap/data/datasources/auth_remote_datasource.dart';
 import 'package:mummymap/data/models/auth_model.dart';
 import 'package:mummymap/domain/repositories/auth_repository.dart';
-import 'package:flutter/material.dart';
+// import 'package:flutter/material.dart';
 import 'package:mummymap/main.dart';
-import 'package:mummymap/presentation/pages/auth/signin.dart';
+// import 'package:mummymap/presentation/pages/auth/signin.dart';
 
-const String kBaseUrl = 'https://antarctic-cost-ambulance.ngrok-free.dev';
+const String kBaseUrl = 'https://mummymap-be-staging.up.railway.app';
 
 final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
   return const FlutterSecureStorage();
@@ -18,7 +18,7 @@ final secureStorageProvider = Provider<FlutterSecureStorage>((ref) {
 
 const _baseHeaders = {
   'Content-Type': 'application/json',
-  'ngrok-skip-browser-warning': 'true',
+
 };
 
 const _noRefreshPaths = [
@@ -38,7 +38,7 @@ final dioProvider = Provider<Dio>((ref) {
     ),
   );
 
-  final storage = ref.read(secureStorageProvider);
+  final storage = ref.watch(secureStorageProvider);
 
   final refreshClient = Dio(
     BaseOptions(
@@ -179,12 +179,12 @@ final dioProvider = Provider<Dio>((ref) {
 });
 
 final authDatasourceProvider = Provider<AuthRemoteDatasource>((ref) {
-  return AuthRemoteDatasource(ref.read(dioProvider));
+  return AuthRemoteDatasource(ref.watch(dioProvider));
 });
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(
-    ref.read(authDatasourceProvider),
-    ref.read(secureStorageProvider),
+    ref.watch(authDatasourceProvider),
+    ref.watch(secureStorageProvider),
   );
 });

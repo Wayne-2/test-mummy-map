@@ -1,9 +1,18 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/firebase_options.dart';
 import 'package:mummymap/router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+Future<void> initializeNotifications() async {
+    OneSignal.initialize("eebc8cfe-8173-4bdd-9c23-f2b79585ca65");
+  
+    await OneSignal.Notifications.requestPermission(true);
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -11,10 +20,20 @@ void main() async {
   await Hive.openBox<String>('shop_box');
   await Hive.openBox<String>('articles_box');
   await Hive.openBox<String>('groups_box');
+  await Hive.openBox<String>('weight_track_box');
+  await Hive.openBox<String>('exercises_box');
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return const _FriendlyErrorScreen();
   };
+
+  
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await initializeNotifications();
 
   runApp(
     const ProviderScope(

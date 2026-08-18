@@ -6,11 +6,11 @@ import 'package:mummymap/domain/repositories/profile_repository.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
 
 final profileDatasourceProvider = Provider<ProfileRemoteDatasource>((ref) {
-  return ProfileRemoteDatasource(ref.read(dioProvider));
+  return ProfileRemoteDatasource(ref.watch(dioProvider));
 });
 
 final profileRepositoryProvider = Provider<ProfileRepository>((ref) {
-  return ProfileRepository(ref.read(profileDatasourceProvider));
+  return ProfileRepository(ref.watch(profileDatasourceProvider));
 });
 
 class ProfileNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
@@ -92,5 +92,5 @@ class ProfileNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
 
 final profileProvider =
     StateNotifierProvider<ProfileNotifier, AsyncValue<ProfileModel?>>(
-  (ref) => ProfileNotifier(ref.read(profileRepositoryProvider)),
+  (ref) => ProfileNotifier(ref.watch(profileRepositoryProvider)),
 );

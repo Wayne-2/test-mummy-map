@@ -13,6 +13,7 @@ class CreatePost extends ConsumerStatefulWidget {
 }
 
 class _CreatePostState extends ConsumerState<CreatePost> {
+  final _titleController = TextEditingController();
   final _postController = TextEditingController();
   final bool _enablePolls = false; // TODO: Enable when backend supports polls
   bool _showPoll = false;
@@ -25,6 +26,7 @@ class _CreatePostState extends ConsumerState<CreatePost> {
 
   @override
   void dispose() {
+    _titleController.dispose();
     _postController.dispose();
     for (final c in _pollOptions) {
       c.dispose();
@@ -49,8 +51,9 @@ class _CreatePostState extends ConsumerState<CreatePost> {
   }
 
   Future<void> _submitPost() async {
+    final title = _titleController.text.trim();
     final text = _postController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || title.isEmpty) return;
 
     final pollOptions = _showPoll
         ? _pollOptions
@@ -64,7 +67,7 @@ class _CreatePostState extends ConsumerState<CreatePost> {
 
     final success = await ref.read(groupsProvider.notifier).addPost(
           groupId: widget.groupId,
-          title: '',
+          title: title,
           body: text,
           pollOptions: pollOptions,
         );
@@ -86,7 +89,9 @@ class _CreatePostState extends ConsumerState<CreatePost> {
 
   @override
   Widget build(BuildContext context) {
-    final isReady = _postController.text.trim().isNotEmpty && !_isSubmitting;
+    final isReady = _titleController.text.trim().isNotEmpty &&
+        _postController.text.trim().isNotEmpty &&
+        !_isSubmitting;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -113,14 +118,33 @@ class _CreatePostState extends ConsumerState<CreatePost> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: _postController,
-                  maxLines: null,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    hintText: 'Tell us what is happening',
-                    border: InputBorder.none,
-                  ),
+                child: Column(
+                  children: [
+                    TextField(
+                      controller: _titleController,
+                      onChanged: (_) => setState(() {}),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Post title',
+                        border: InputBorder.none,
+                      ),
+                    ),
+                    const Divider(),
+                    Expanded(
+                      child: TextField(
+                        controller: _postController,
+                        maxLines: null,
+                        onChanged: (_) => setState(() {}),
+                        decoration: const InputDecoration(
+                          hintText: 'Tell us what is happening',
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

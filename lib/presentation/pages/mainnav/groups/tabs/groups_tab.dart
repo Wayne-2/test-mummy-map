@@ -137,7 +137,14 @@ class _GroupsTabState extends ConsumerState<GroupsTab> {
             ListTile(
               leading: const Icon(Icons.notifications_outlined),
               title: const Text('Mute notifications'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Notification controls are not available yet.'),
+                  ),
+                );
+              },
             ),
             if (!group.isOwner)
               ListTile(
@@ -145,18 +152,33 @@ class _GroupsTabState extends ConsumerState<GroupsTab> {
                     color: Colors.red),
                 title: const Text('Leave group',
                     style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  ref
+                onTap: () async {
+                  final left = await ref
                       .read(groupsProvider.notifier)
                       .leaveGroup(group.id);
+                  if (!context.mounted) return;
                   Navigator.pop(context);
+                  if (!left) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not leave the group. Please try again.'),
+                      ),
+                    );
+                  }
                 },
               ),
             if (group.isOwner)
               ListTile(
                 leading: const Icon(Icons.settings_outlined),
                 title: const Text('Group settings'),
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Group settings are not available yet.'),
+                    ),
+                  );
+                },
               ),
           ],
         ),

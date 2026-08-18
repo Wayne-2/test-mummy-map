@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "998828365946",
+    "project_id": "mummy-map-fbbd8",
+    "storage_bucket": "mummy-map-fbbd8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998828365946:android:bc9f7c513e70bc2f9143c3",
+        "android_client_info": {
+          "package_name": "com.example.mummymap"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQlZqgQeBoH-MmmiFsr6KdHJ3na6k16JA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:998828365946:android:c34a37dbb0e238cf9143c3",
+        "android_client_info": {
+          "package_name": "mummy_map.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQlZqgQeBoH-MmmiFsr6KdHJ3na6k16JA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

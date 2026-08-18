@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/group_model.dart';
 import 'package:mummymap/presentation/providers/groups_provider.dart';
 import 'package:mummymap/presentation/pages/mainnav/groups/post_detail.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PostCard extends ConsumerWidget {
   final GroupPost post;
@@ -168,8 +169,13 @@ class PostCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                Icon(Icons.share_outlined,
-                    size: 20, color: Colors.grey.shade500),
+                GestureDetector(
+                  onTap: () => Share.share(
+                    '${livePost.title}\n\n${livePost.body}'.trim(),
+                  ),
+                  child: Icon(Icons.share_outlined,
+                      size: 20, color: Colors.grey.shade500),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -245,14 +251,22 @@ class PostCard extends ConsumerWidget {
             ListTile(
               leading: const Icon(Icons.share_outlined),
               title: const Text('Share post'),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                Share.share('${post.title}\n\n${post.body}'.trim());
+              },
             ),
             ListTile(
               leading: const Icon(Icons.flag_outlined,
                   color: Colors.red),
               title: const Text('Report post',
                   style: TextStyle(color: Colors.red)),
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reporting is not available yet.')),
+                );
+              },
             ),
             if (ref.read(groupsProvider.notifier).isMyPost(post))
               ListTile(

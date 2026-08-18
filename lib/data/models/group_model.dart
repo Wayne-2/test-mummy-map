@@ -49,6 +49,7 @@ class PollOption {
 
 class PostReply {
   final String id;
+  final String authorId;
   final String author;
   final String initials;
   final int avatarColor;
@@ -58,6 +59,7 @@ class PostReply {
 
   const PostReply({
     required this.id,
+    this.authorId = '',
     required this.author,
     required this.initials,
     required this.avatarColor,
@@ -71,6 +73,7 @@ class PostReply {
   PostReply copyWith({List<String>? likedBy}) {
     return PostReply(
       id: id,
+      authorId: authorId,
       author: author,
       initials: initials,
       avatarColor: avatarColor,
@@ -81,14 +84,12 @@ class PostReply {
   }
 
   factory PostReply.fromJson(Map<String, dynamic> json) {
-    final author = _stringOr(
-      json,
-      const ['authorName', 'author', 'username', 'userName'],
-      'Member',
-    );
+    final author = _authorName(json);
+
     final id = _stringOr(json, const ['id', '_id', 'commentId'], '');
     return PostReply(
       id: id,
+      authorId: _authorId(json),
       author: author,
       initials: _initialsFrom(author),
       avatarColor: _colorFromId(id.isNotEmpty ? id : author),
@@ -101,6 +102,7 @@ class PostReply {
 class GroupPost {
   final String id;
   final String groupId;
+  final String authorId;
   final String groupInitials;
   final int groupColor;
   final String author;
@@ -117,6 +119,7 @@ class GroupPost {
   const GroupPost({
     required this.id,
     required this.groupId,
+    this.authorId = '',
     required this.groupInitials,
     required this.groupColor,
     required this.author,
@@ -144,6 +147,7 @@ class GroupPost {
     return GroupPost(
       id: id,
       groupId: groupId,
+      authorId: authorId,
       groupInitials: groupInitials,
       groupColor: groupColor,
       author: author,
@@ -167,11 +171,7 @@ class GroupPost {
     required String groupInitials,
   }) {
     final id = _stringOr(json, const ['id', '_id', 'postId'], '');
-    final author = _stringOr(
-      json,
-      const ['authorName', 'author', 'username', 'userName'],
-      'Member',
-    );
+    final author = _authorName(json);
     final likedByRaw = json['likedBy'];
     final likedBy = likedByRaw is List
         ? likedByRaw.map((e) => e.toString()).toList()
@@ -193,6 +193,7 @@ class GroupPost {
       id: id,
       groupId: _stringOr(
           json, const ['groupId', 'group_id'], fallbackGroupId),
+      authorId: _authorId(json),
       groupInitials: groupInitials,
       groupColor: groupColor,
       author: author,
@@ -206,6 +207,48 @@ class GroupPost {
       postReplies: replies,
     );
   }
+}
+
+String _authorName(Map<String, dynamic> json) {
+  final direct = _stringOr(
+    json,
+    const ['authorName', 'username', 'userName', 'author'],
+    '',
+  );
+  if (direct.isNotEmpty) return direct;
+  for (final key in const ['author', 'user', 'createdBy']) {
+    final value = json[key];
+    if (value is Map<String, dynamic>) {
+      final name = _stringOr(
+        value,
+        const ['name', 'displayName', 'username', 'userName'],
+        '',
+      );
+      if (name.isNotEmpty) return name;
+      final firstName = _stringOr(value, const ['firstName'], '');
+      final lastName = _stringOr(value, const ['lastName'], '');
+      final fullName = '$firstName $lastName'.trim();
+      if (fullName.isNotEmpty) return fullName;
+    }
+  }
+  return 'Member';
+}
+
+String _authorId(Map<String, dynamic> json) {
+  final direct = _stringOr(
+    json,
+    const ['authorId', 'userId', 'createdById', 'author_id', 'user_id'],
+    '',
+  );
+  if (direct.isNotEmpty) return direct;
+  for (final key in const ['author', 'user', 'createdBy']) {
+    final value = json[key];
+    if (value is Map<String, dynamic>) {
+      final id = _stringOr(value, const ['id', '_id', 'userId'], '');
+      if (id.isNotEmpty) return id;
+    }
+  }
+  return '';
 }
 
 class CommunityGroup {
@@ -272,11 +315,20 @@ class CommunityGroup {
     final tags = tagsRaw is List
         ? tagsRaw.map((e) => e.toString()).toList()
         : <String>[];
-    final ownerId = _stringOr(
+    var ownerId = _stringOr(
       json,
-      const ['ownerId', 'createdBy', 'adminId', 'creatorId'],
+      const ['ownerId', 'createdBy', 'adminId', 'creatorId', 'creator', 'userId', 'owner_id', 'admin'],
       '',
     );
+    if (ownerId.isEmpty) {
+      for (final key in const ['owner', 'creator', 'createdBy', 'admin']) {
+        final value = json[key];
+        if (value is Map<String, dynamic>) {
+          ownerId = _stringOr(value, const ['id', '_id', 'userId'], '');
+          if (ownerId.isNotEmpty) break;
+        }
+      }
+    }
     
     final membersRaw = json['members'];
     bool isMemberInList = false;
@@ -284,7 +336,13 @@ class CommunityGroup {
     
     if (membersRaw is List) {
       memberCount = membersRaw.length;
-      isMemberInList = membersRaw.any((e) => e.toString() == currentUserId);
+      isMemberInList = membersRaw.any((member) {
+        if (member is Map<String, dynamic>) {
+          return _stringOr(member, const ['id', '_id', 'userId'], '') ==
+              currentUserId;
+        }
+        return member.toString() == currentUserId;
+      });
     } else {
       memberCount = _intOr(
         json,

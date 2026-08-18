@@ -25,6 +25,22 @@ class MealItem {
     required this.priceValue,
   });
 
+  factory MealItem.fromJson(Map<String, dynamic> json) {
+    return MealItem(
+      id: json['id']?.toString() ?? '',
+      mealTime: json['mealTime'] ?? 'Breakfast',
+      name: json['name'] ?? 'Unknown Meal',
+      imagePath: json['imagePath'] ?? 'assets/placeholder.png',
+      prepMins: json['prepMins'] ?? 0,
+      cookMins: json['cookMins'] ?? 0,
+      servings: json['servings'] ?? 1,
+      description: json['description'] ?? '',
+      ingredientGroups: [], // Simplify for now
+      prepGroups: [], // Simplify for now
+      priceValue: (json['priceValue'] ?? 0).toDouble(),
+    );
+  }
+
   String get price =>
       '₦${priceValue.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}';
 }

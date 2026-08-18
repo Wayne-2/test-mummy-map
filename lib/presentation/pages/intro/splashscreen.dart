@@ -4,14 +4,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mummymap/domain/repositories/auth_repository.dart';
 import 'package:go_router/go_router.dart';
 
-class SplashScreen extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
+
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  ConsumerState<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -34,10 +38,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!hasSession) {
       context.go('/get-started');
-    } else if (!hasCompletedSetup) {
-      context.go('/profile-setup');
-    } else {
+      return;
+    }
+
+    try {
+      await ref.read(profileRepositoryProvider).getMyProfile();
+      await prefs.setBool('has_completed_setup', true);
+      if (!mounted) return;
       context.go('/home');
+    } on DioException catch (e) {
+      if (!mounted) return;
+      if (e.response?.statusCode == 404) {
+        context.go('/profile-setup');
+      } else {
+        if (hasCompletedSetup) {
+          context.go('/home');
+        } else {
+          context.go('/profile-setup');
+        }
+      }
     }
   }
 

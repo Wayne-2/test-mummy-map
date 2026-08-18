@@ -85,13 +85,26 @@ class _LoadingScreenState extends ConsumerState<LoadingScreen> {
       ref.read(profileSetupDraftProvider.notifier).reset();
       if (mounted) setState(() => _submitDone = true);
     } catch (e) {
-      if (mounted) setState(() => _error = _describe(e));
+      final s = e.toString();
+      if (s.contains('409')) {
+        // Recover gracefully if they actually already had a profile
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('has_completed_setup', true);
+        ref.read(profileSetupDraftProvider.notifier).reset();
+        
+        // Fetch the profile so it's loaded before routing
+        try {
+          await ref.read(profileProvider.notifier).loadMyProfile();
+        } catch (_) {}
+        
+        if (mounted) setState(() => _submitDone = true);
+      } else {
+        if (mounted) setState(() => _error = _describe(e));
+      }
     }
   }
 
   String _describe(Object e) {
-    final s = e.toString();
-    if (s.contains('409')) return 'A profile already exists for this account.';
     return 'We couldn\'t save your profile. Please try again.';
   }
 

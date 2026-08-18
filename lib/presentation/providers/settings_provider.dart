@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
 
 class SettingsState {
   final String firstName;
@@ -71,44 +72,48 @@ class SettingsState {
 }
 
 class SettingsNotifier extends StateNotifier<SettingsState> {
-  SettingsNotifier() : super(const SettingsState()) {
+  final String _userId;
+
+  SettingsNotifier(this._userId) : super(const SettingsState()) {
     _load();
   }
+
+  String _key(String k) => '${_userId}_$k';
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     state = state.copyWith(
-      firstName: prefs.getString('firstName') ?? '',
-      lastName: prefs.getString('lastName') ?? '',
-      babySex: prefs.getString('babySex'),
-      babyName: prefs.getString('babyName') ?? '',
-      firstChild: prefs.getString('firstChild'),
-      babyAlreadyBorn: prefs.getBool('babyAlreadyBorn') ?? false,
-      reminders: prefs.getBool('reminders') ?? false,
-      lengthUnit: prefs.getString('lengthUnit') ?? 'Inches (in)',
-      weightUnit: prefs.getString('weightUnit') ?? 'Pounds (lbs)',
-      age: prefs.getInt('age'),
-      relationship: prefs.getString('relationship') ?? 'Mother',
-      email: prefs.getString('email') ?? '',
+      firstName: prefs.getString(_key('firstName')) ?? '',
+      lastName: prefs.getString(_key('lastName')) ?? '',
+      babySex: prefs.getString(_key('babySex')),
+      babyName: prefs.getString(_key('babyName')) ?? '',
+      firstChild: prefs.getString(_key('firstChild')),
+      babyAlreadyBorn: prefs.getBool(_key('babyAlreadyBorn')) ?? false,
+      reminders: prefs.getBool(_key('reminders')) ?? false,
+      lengthUnit: prefs.getString(_key('lengthUnit')) ?? 'Inches (in)',
+      weightUnit: prefs.getString(_key('weightUnit')) ?? 'Pounds (lbs)',
+      age: prefs.getInt(_key('age')),
+      relationship: prefs.getString(_key('relationship')) ?? 'Mother',
+      email: prefs.getString(_key('email')) ?? '',
     );
   }
 
   Future<void> _save() async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('firstName', state.firstName);
-    await prefs.setString('lastName', state.lastName);
-    if (state.babySex != null) await prefs.setString('babySex', state.babySex!);
-    await prefs.setString('babyName', state.babyName);
+    await prefs.setString(_key('firstName'), state.firstName);
+    await prefs.setString(_key('lastName'), state.lastName);
+    if (state.babySex != null) await prefs.setString(_key('babySex'), state.babySex!);
+    await prefs.setString(_key('babyName'), state.babyName);
     if (state.firstChild != null) {
-      await prefs.setString('firstChild', state.firstChild!);
+      await prefs.setString(_key('firstChild'), state.firstChild!);
     }
-    await prefs.setBool('babyAlreadyBorn', state.babyAlreadyBorn);
-    await prefs.setBool('reminders', state.reminders);
-    await prefs.setString('lengthUnit', state.lengthUnit);
-    await prefs.setString('weightUnit', state.weightUnit);
-    if (state.age != null) await prefs.setInt('age', state.age!);
-    await prefs.setString('relationship', state.relationship);
-    await prefs.setString('email', state.email);
+    await prefs.setBool(_key('babyAlreadyBorn'), state.babyAlreadyBorn);
+    await prefs.setBool(_key('reminders'), state.reminders);
+    await prefs.setString(_key('lengthUnit'), state.lengthUnit);
+    await prefs.setString(_key('weightUnit'), state.weightUnit);
+    if (state.age != null) await prefs.setInt(_key('age'), state.age!);
+    await prefs.setString(_key('relationship'), state.relationship);
+    await prefs.setString(_key('email'), state.email);
   }
 
   void update(SettingsState newState) {
@@ -117,8 +122,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
   }
 
   Future<void> clear() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    // Only clear the in-memory state, do not delete from SharedPreferences.
+    // This allows the user's settings to be preserved for the next time they log in.
     state = const SettingsState();
   }
 
@@ -137,6 +142,8 @@ class SettingsNotifier extends StateNotifier<SettingsState> {
 }
 
 final settingsProvider =
-    StateNotifierProvider<SettingsNotifier, SettingsState>(
-  (_) => SettingsNotifier(),
-);
+    StateNotifierProvider<SettingsNotifier, SettingsState>((ref) {
+  final profile = ref.watch(profileProvider).value;
+  final userId = profile?.userId ?? '';
+  return SettingsNotifier(userId);
+});
