@@ -126,22 +126,45 @@ class _ProductDetailState extends ConsumerState<ProductDetail> {
                     children: [
                       SizedBox(
                         height: 300,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: widget.product.images.length,
-                          onPageChanged: (i) =>
-                              setState(() => _currentImage = i),
-                          itemBuilder: (context, i) => Image.asset(
-                            widget.product.images[i],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            errorBuilder: (_, __, ___) => Container(
-                              color: Colors.grey.shade200,
-                              child: const Icon(Icons.image_outlined,
-                                  color: Colors.grey, size: 60),
-                            ),
-                          ),
-                        ),
+                        child: widget.product.images.isEmpty
+                            ? Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.image_outlined,
+                                    color: Colors.grey, size: 60),
+                              )
+                            : PageView.builder(
+                                controller: _pageController,
+                                itemCount: widget.product.images.length,
+                                onPageChanged: (i) =>
+                                    setState(() => _currentImage = i),
+                                itemBuilder: (context, i) {
+                                  final img = widget.product.images[i];
+                                  final isNetwork = img.startsWith('http://') ||
+                                      img.startsWith('https://');
+                                  if (isNetwork) {
+                                    return Image.network(
+                                      img,
+                                      fit: BoxFit.cover,
+                                      width: double.infinity,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Icon(Icons.image_outlined,
+                                            color: Colors.grey, size: 60),
+                                      ),
+                                    );
+                                  }
+                                  return Image.asset(
+                                    img,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      color: Colors.grey.shade200,
+                                      child: const Icon(Icons.image_outlined,
+                                          color: Colors.grey, size: 60),
+                                    ),
+                                  );
+                                },
+                              ),
                       ),
                       if (widget.product.images.length > 1)
                         Positioned(

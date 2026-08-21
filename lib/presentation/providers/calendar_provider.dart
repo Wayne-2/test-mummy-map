@@ -33,13 +33,24 @@ class CalendarState {
 
 class CalendarNotifier extends StateNotifier<CalendarState> {
   final CalendarLocalDatasource _localDatasource;
-  final String _userId;
+  String _userId;
 
   CalendarNotifier(this._localDatasource, this._userId) : super(const CalendarState(isLoading: true)) {
     _loadData();
   }
 
+  Future<void> refreshWith(String newUserId) async {
+    if (newUserId == _userId) return;
+    _userId = newUserId;
+    state = const CalendarState(isLoading: true);
+    await _loadData();
+  }
+
   Future<void> _loadData() async {
+    if (_userId.isEmpty) {
+      state = state.copyWith(isLoading: false, events: [], reminders: []);
+      return;
+    }
     try {
       final events = await _localDatasource.getEvents(_userId);
       final reminders = await _localDatasource.getReminders(_userId);
@@ -93,5 +104,12 @@ class CalendarNotifier extends StateNotifier<CalendarState> {
 final calendarProvider = StateNotifierProvider<CalendarNotifier, CalendarState>((ref) {
   final profile = ref.watch(profileProvider).value;
   final userId = profile?.userId ?? profile?.id ?? '';
-  return CalendarNotifier(ref.watch(calendarLocalDatasourceProvider), userId);
+  final notifier = CalendarNotifier(ref.watch(calendarLocalDatasourceProvider), userId);
+  ref.listen(profileProvider, (prev, next) {
+    final newId = next.value?.userId ?? next.value?.id ?? '';
+    if (newId.isNotEmpty && newId != userId) {
+      notifier.refreshWith(newId);
+    }
+  });
+  return notifier;
 });

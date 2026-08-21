@@ -38,79 +38,79 @@ class _ForgotPasswordState extends ConsumerState<ForgotPassword> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
     return Scaffold(
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color.fromARGB(255, 222, 197, 239), Colors.white],
-              ),
-            ),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color.fromARGB(255, 222, 197, 239), Colors.white],
           ),
-          Positioned(
-            bottom: 190,
-            left: 16,
-            right: 16,
-            top: screenHeight * 0.18,
-            child: Container(
-              padding: EdgeInsets.only(
-                left: 24,
-                right: 24,
-                top: 32,
-                bottom: bottomPadding + 24,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(32),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x1A000000),
-                    blurRadius: 24,
-                    offset: Offset(0, 8),
+        ),
+        child: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 24,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 48,
                   ),
-                ],
-              ),
-              child: SingleChildScrollView(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  transitionBuilder: (child, animation) => FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position: Tween<Offset>(
-                        begin: const Offset(0.05, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x1A000000),
+                            blurRadius: 24,
+                            offset: Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0.05, 0),
+                              end: Offset.zero,
+                            ).animate(animation),
+                            child: child,
+                          ),
+                        ),
+                        child: _step == 0
+                            ? _EmailStep(
+                                key: const ValueKey(0),
+                                onSubmitted: _onEmailSubmitted,
+                              )
+                            : _step == 1
+                                ? _OtpStep(
+                                    key: const ValueKey(1),
+                                    email: _email,
+                                    onVerified: _onOtpVerified,
+                                  )
+                                : _ResetStep(
+                                    key: const ValueKey(2),
+                                    resetToken: _resetToken,
+                                    onComplete: _onResetComplete,
+                                  ),
+                      ),
                     ),
                   ),
-                  child: _step == 0
-                      ? _EmailStep(
-                          key: const ValueKey(0),
-                          onSubmitted: _onEmailSubmitted,
-                        )
-                      : _step == 1
-                          ? _OtpStep(
-                              key: const ValueKey(1),
-                              email: _email,
-                              onVerified: _onOtpVerified,
-                            )
-                          : _ResetStep(
-                              key: const ValueKey(2),
-                              resetToken: _resetToken,
-                              onComplete: _onResetComplete,
-                            ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
-        ],
+        ),
       ),
     );
   }
@@ -137,7 +137,7 @@ class _EmailStepState extends ConsumerState<_EmailStep> {
 
   bool get _isValid {
     final v = _emailController.text.trim();
-    return v.isNotEmpty && v.contains('@') && v.contains('.');
+    return RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v);
   }
 
   Future<void> _submit() async {
@@ -359,6 +359,16 @@ class _OtpStepState extends ConsumerState<_OtpStep> {
   }
 
   void _onDigitChanged(int index, String value) {
+    if (value.length > 1) {
+      final digits = value.replaceAll(RegExp(r'[^0-9]'), '').split('');
+      for (int i = 0; i < digits.length && (index + i) < 6; i++) {
+        _controllers[index + i].text = digits[i];
+      }
+      final next = (index + digits.length).clamp(0, 5);
+      _focusNodes[next].requestFocus();
+      setState(() {});
+      return;
+    }
     if (value.length == 1 && index < 5) {
       _focusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {
@@ -554,7 +564,7 @@ class _ResetStepState extends ConsumerState<_ResetStep> {
 
     try {
       await ref.read(authRepositoryProvider).resetPassword(
-            newPassword: _passwordController.text.trim(),
+            newPassword: _passwordController.text,
             resetToken: widget.resetToken,
           );
 

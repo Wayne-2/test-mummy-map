@@ -1,17 +1,24 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:mummymap/firebase_options.dart';
 import 'package:mummymap/router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:onesignal_flutter/onesignal_flutter.dart';
+import 'package:mummymap/services/onesignal_service.dart';
+import 'package:mummymap/services/sync_service.dart';
+import 'package:mummymap/domain/repositories/auth_repository.dart';
+import 'package:mummymap/presentation/providers/notification_provider.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+final OneSignalService oneSignalService = OneSignalService();
+
 Future<void> initializeNotifications() async {
-    OneSignal.initialize("eebc8cfe-8173-4bdd-9c23-f2b79585ca65");
-  
-    await OneSignal.Notifications.requestPermission(true);
+    await oneSignalService.initialize();
 }
 
 void main() async {
@@ -22,12 +29,12 @@ void main() async {
   await Hive.openBox<String>('groups_box');
   await Hive.openBox<String>('weight_track_box');
   await Hive.openBox<String>('exercises_box');
+  await Hive.openBox<String>('calendar_box');
+  await Hive.openBox<String>('mood_box');
 
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return const _FriendlyErrorScreen();
   };
-
-  
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
@@ -42,11 +49,58 @@ void main() async {
   );
 }
 
-class MyApp extends ConsumerWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+  String _registeredToken = '';
+
+  @override
+  void initState() {
+    super.initState();
+    ref.read(syncServiceProvider);
+    _setupPushSubscriptionObserver();
+  }
+
+  bool _isRegistered(String? id) =>
+      id != null && id.isNotEmpty && !id.startsWith('local-');
+
+  String get _platform {
+    if (kIsWeb) return 'WEB';
+    if (Platform.isIOS) return 'IOS';
+    if (Platform.isAndroid) return 'ANDROID';
+    return 'WEB';
+  }
+
+  void _setupPushSubscriptionObserver() {
+    oneSignalService.addPushSubscriptionObserver((id) {
+      _maybeRegisterDeviceToken(id);
+    });
+    _maybeRegisterDeviceToken(oneSignalService.subscriptionId);
+  }
+
+  Future<void> _maybeRegisterDeviceToken(String? id) async {
+    if (!_isRegistered(id) || id == _registeredToken) return;
+    final isLoggedIn =
+        await _storage.read(key: AuthStorageKeys.isLoggedIn) == 'true';
+    if (!isLoggedIn || !mounted) return;
+    try {
+      await ref
+          .read(notificationRepositoryProvider)
+          .registerDeviceToken(token: id!, platform: _platform);
+      _registeredToken = id;
+    } catch (_) {
+      // Token registration will be retried on the next subscription change.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       routerConfig: router,

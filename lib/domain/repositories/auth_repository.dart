@@ -75,6 +75,10 @@ class AuthRepository {
     return datasource.requestPasswordResetOtp(email: email);
   }
 
+  Future<void> resendOtp({required String email}) {
+    return datasource.resendOtp(email: email);
+  }
+
   Future<String> verifyResetOtp({required String otp}) async {
     final model = await datasource.verifyOtp(otp: otp);
     if (!model.hasResetToken) {

@@ -38,6 +38,12 @@ class _GetToKnowYouState extends ConsumerState<GetToKnowYou> {
 
   void _nextSub() async {
     if (_subIndex == 0) {
+      if (_nameController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter your full name'), backgroundColor: Colors.red),
+        );
+        return;
+      }
       final draft = ref.read(profileSetupDraftProvider.notifier);
       draft.setName(_nameController.text);
       if (_selectedDob != null) draft.setDateOfBirth(_selectedDob!);

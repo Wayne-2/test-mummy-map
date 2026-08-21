@@ -28,6 +28,27 @@ class WeightTrackRepository {
 
   Future<void> saveLocalHistory(List<WeightLog> entries) => localDatasource.saveHistory(userId, entries);
 
+  Future<void> flushPending() async {
+    final local = await localDatasource.getHistory(userId);
+    final pending = local.where((e) => e.isPendingSync).toList();
+    if (pending.isEmpty) return;
+
+    var updated = local;
+    for (final entry in pending) {
+      try {
+        final saved = await datasource.logWeight(entry);
+        final synced = saved.copyWith(isPendingSync: false);
+        updated = [
+          for (final e in updated)
+            if (e.id == entry.id) synced else e,
+        ];
+      } catch (_) {
+        break;
+      }
+    }
+    await localDatasource.saveHistory(userId, updated);
+  }
+
   List<WeightLog> _mergeRemoteWithPending(
     List<WeightLog> remote,
     List<WeightLog> local,

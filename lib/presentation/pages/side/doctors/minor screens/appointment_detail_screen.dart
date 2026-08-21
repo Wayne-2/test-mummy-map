@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mummymap/data/models/doctor_model.dart';
 import 'package:mummymap/presentation/providers/doctors_provider.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctor_detail_screen.dart';
+import 'package:mummymap/presentation/pages/side/doctors/minor%20screens/video_call_screen.dart';
 
 class AppointmentDetailScreen extends ConsumerStatefulWidget {
   final String appointmentId;
@@ -123,6 +124,10 @@ class _AppointmentDetailScreenState
               _buildDoctorRow(appointment),
               const SizedBox(height: 20),
               _buildStatCards(appointment),
+              if (_canJoinCall(appointment)) ...[
+                const SizedBox(height: 16),
+                _buildJoinCallButton(appointment),
+              ],
               const SizedBox(height: 16),
               _buildDateTimeRow(appointment),
               const SizedBox(height: 24),
@@ -288,6 +293,46 @@ class _AppointmentDetailScreenState
           ),
         );
       }).toList(),
+    );
+  }
+
+  bool _canJoinCall(DoctorAppointment appointment) {
+    return appointment.status == AppointmentStatus.scheduled &&
+        appointment.callType.toLowerCase().contains('video');
+  }
+
+  Widget _buildJoinCallButton(DoctorAppointment appointment) {
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: ElevatedButton.icon(
+        onPressed: () => _joinVideoCall(appointment),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF3F2868),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
+          elevation: 0,
+        ),
+        icon: const Icon(Icons.videocam, size: 20),
+        label: const Text(
+          'Join Video Call',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+
+  void _joinVideoCall(DoctorAppointment appointment) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => VideoCallScreen(
+          doctor: appointment.doctor,
+          roomId: appointment.id,
+        ),
+      ),
     );
   }
 

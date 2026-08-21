@@ -23,18 +23,23 @@ class ProfileNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
   }
 
   Future<void> loadMyProfile() async {
-    state = const AsyncValue.loading();
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       final profile = await _repository.getMyProfile();
       state = AsyncValue.data(profile);
     } on DioException catch (e) {
       if (e.response?.statusCode == 404) {
         state = const AsyncValue.data(null);
-      } else {
+      } else if (previous == null) {
         state = AsyncValue.error(e, StackTrace.current);
       }
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (previous == null) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
@@ -64,18 +69,24 @@ class ProfileNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
   }
 
   Future<void> changePhoto(String imagePath) async {
+    final previous = state.valueOrNull;
     try {
       await _repository.uploadImage(imagePath);
       final fresh = await _repository.getMyProfile();
       state = AsyncValue.data(fresh);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (previous == null) {
+        state = AsyncValue.error(e, st);
+      }
       rethrow;
     }
   }
 
   Future<void> updateFields(ProfileModel updated, {String? imagePath}) async {
-    state = const AsyncValue.loading();
+    final previous = state.valueOrNull;
+    if (previous == null) {
+      state = const AsyncValue.loading();
+    }
     try {
       await _repository.updateProfile(updated);
       if (imagePath != null && imagePath.isNotEmpty) {
@@ -84,7 +95,9 @@ class ProfileNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
       final fresh = await _repository.getMyProfile();
       state = AsyncValue.data(fresh);
     } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      if (previous == null) {
+        state = AsyncValue.error(e, st);
+      }
       rethrow;
     }
   }

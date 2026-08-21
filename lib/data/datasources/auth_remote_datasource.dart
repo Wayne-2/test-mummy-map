@@ -46,6 +46,13 @@ class AuthRemoteDatasource {
     return AuthModel.fromJson(res.data as Map<String, dynamic>);
   }
 
+  Future<void> resendOtp({required String email}) async {
+    await dio.post(
+      '/api/v1/auth/resend-otp',
+      data: {'email': email},
+    );
+  }
+
   Future<AuthModel> refreshToken({
     required String refreshToken,
   }) async {

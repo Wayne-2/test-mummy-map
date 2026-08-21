@@ -23,9 +23,19 @@ final shopRepositoryProvider = Provider<ShopRepository>((ref) {
   );
 });
 
-final shopProvider = StateNotifierProvider<ShopNotifier, ShopState>(
-  (ref) => ShopNotifier(ref.read(shopRepositoryProvider)),
-);
+final shopProvider = StateNotifierProvider<ShopNotifier, ShopState>((ref) {
+  final repo = ref.watch(shopRepositoryProvider);
+  final notifier = ShopNotifier(repo);
+  // When userId becomes available (profile loads), refresh to load user-scoped Hive data
+  ref.listen(shopRepositoryProvider, (prev, next) {
+    final prevId = (prev as ShopRepositoryImpl?)?.userId ?? '';
+    final nextId = (next as ShopRepositoryImpl).userId;
+    if (prevId != nextId && nextId.isNotEmpty) {
+      notifier.refreshWith(next);
+    }
+  });
+  return notifier;
+});
 
 class ShopState {
   final List<ShopProduct> products;
@@ -85,10 +95,15 @@ class ShopState {
 }
 
 class ShopNotifier extends StateNotifier<ShopState> {
-  final ShopRepository _repository;
+  ShopRepository _repository;
 
   ShopNotifier(this._repository) : super(const ShopState()) {
     _init();
+  }
+
+  Future<void> refreshWith(ShopRepository newRepo) async {
+    _repository = newRepo;
+    await _init();
   }
 
   Future<void> _init() async {

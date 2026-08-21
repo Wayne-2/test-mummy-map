@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mummymap uses the microphone to participate in audio and video calls with your doctor.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Mummymap uses the camera to participate in video calls with your doctor.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

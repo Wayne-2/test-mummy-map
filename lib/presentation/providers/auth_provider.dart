@@ -52,7 +52,7 @@ final dioProvider = Provider<Dio>((ref) {
   if (kDebugMode) {
     refreshClient.interceptors.add(LogInterceptor(
       request: true,
-      requestBody: true,
+      requestBody: false,
       responseBody: true,
       error: true,
     ));
@@ -169,7 +169,7 @@ final dioProvider = Provider<Dio>((ref) {
   if (kDebugMode) {
     dio.interceptors.add(LogInterceptor(
       request: true,
-      requestBody: true,
+      requestBody: false,
       responseBody: true,
       error: true,
     ));

@@ -34,8 +34,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
   List<ShopProduct> _filtered(List<ShopProduct> products) {
     return products.where((p) {
+      final normalizedSelected = _selectedCategory.toUpperCase();
+      final normalizedCategory = p.category.toUpperCase();
       final matchesCategory =
-          _selectedCategory == 'All' || p.category == _selectedCategory;
+          normalizedSelected == 'ALL' || normalizedCategory == normalizedSelected;
       final matchesQuery = _query.isEmpty ||
           p.name.toLowerCase().contains(_query.toLowerCase()) ||
           p.category.toLowerCase().contains(_query.toLowerCase());
@@ -43,15 +45,15 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     }).toList();
   }
 
+
+
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(shopProvider);
-
-    if (state.errorMessage != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    ref.listen<ShopState>(shopProvider, (prev, next) {
+      if (next.errorMessage != null && next.errorMessage != prev?.errorMessage) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(state.errorMessage!),
+            content: Text(next.errorMessage!),
             behavior: SnackBarBehavior.floating,
             action: SnackBarAction(
               label: 'Retry',
@@ -60,8 +62,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
           ),
         );
         ref.read(shopProvider.notifier).clearError();
-      });
-    }
+      }
+    });
+    final state = ref.watch(shopProvider);
 
     final filtered = _filtered(state.products);
     final categories =
@@ -382,21 +385,44 @@ class _ProductCardState extends ConsumerState<_ProductCard> {
                 borderRadius: BorderRadius.circular(12),
                 child: SizedBox(
                   height: 160,
-                  child: PageView.builder(
-                    itemCount: widget.product.images.length,
-                    onPageChanged: (i) =>
-                        setState(() => _currentImage = i),
-                    itemBuilder: (context, i) => Image.asset(
-                      widget.product.images[i],
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_outlined,
-                            color: Colors.grey, size: 40),
-                      ),
-                    ),
-                  ),
+                  child: widget.product.images.isEmpty
+                      ? Container(
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image_outlined,
+                              color: Colors.grey, size: 40),
+                        )
+                      : PageView.builder(
+                          itemCount: widget.product.images.length,
+                          onPageChanged: (i) =>
+                              setState(() => _currentImage = i),
+                          itemBuilder: (context, i) {
+                            final img = widget.product.images[i];
+                            final isNetwork = img.startsWith('http://') ||
+                                img.startsWith('https://');
+                            if (isNetwork) {
+                              return Image.network(
+                                img,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade200,
+                                  child: const Icon(Icons.image_outlined,
+                                      color: Colors.grey, size: 40),
+                                ),
+                              );
+                            }
+                            return Image.asset(
+                              img,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.image_outlined,
+                                    color: Colors.grey, size: 40),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
               Positioned(

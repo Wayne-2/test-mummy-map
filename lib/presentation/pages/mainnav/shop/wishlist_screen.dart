@@ -177,21 +177,44 @@ class _WishlistCardState extends ConsumerState<_WishlistCard> {
                 borderRadius: BorderRadius.circular(12),
                 child: SizedBox(
                   height: 160,
-                  child: PageView.builder(
-                    itemCount: widget.product.images.length,
-                    onPageChanged: (i) =>
-                        setState(() => _currentImage = i),
-                    itemBuilder: (context, i) => Image.asset(
-                      widget.product.images[i],
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.image_outlined,
-                            color: Colors.grey, size: 40),
-                      ),
-                    ),
-                  ),
+                  child: widget.product.images.isEmpty
+                      ? Container(
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image_outlined,
+                              color: Colors.grey, size: 40),
+                        )
+                      : PageView.builder(
+                          itemCount: widget.product.images.length,
+                          onPageChanged: (i) =>
+                              setState(() => _currentImage = i),
+                          itemBuilder: (context, i) {
+                            final img = widget.product.images[i];
+                            final isNetwork = img.startsWith('http://') ||
+                                img.startsWith('https://');
+                            if (isNetwork) {
+                              return Image.network(
+                                img,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade200,
+                                  child: const Icon(Icons.image_outlined,
+                                      color: Colors.grey, size: 40),
+                                ),
+                              );
+                            }
+                            return Image.asset(
+                              img,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: Colors.grey.shade200,
+                                child: const Icon(Icons.image_outlined,
+                                    color: Colors.grey, size: 40),
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
               Positioned(

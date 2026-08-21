@@ -9,9 +9,12 @@ class GroupRepository {
 
   GroupRepository(this.datasource, this.localDatasource, this.userId);
 
+  bool get _hasUser => userId.isNotEmpty;
+
   Future<List<CommunityGroup>> getLocalGroups({
     required String currentUserId,
   }) async {
+    if (!_hasUser) return [];
     final raw = await localDatasource.getLocalGroups(userId);
     if (raw == null) return [];
     return raw
@@ -32,7 +35,7 @@ class GroupRepository {
       page: page,
       limit: limit,
     );
-    if (page == 1 && search == null && tags == null) {
+    if (page == 1 && search == null && tags == null && _hasUser) {
       await localDatasource.saveGroups(userId, raw);
     }
     return raw
@@ -66,6 +69,7 @@ class GroupRepository {
     required int groupColor,
     required String groupInitials,
   }) async {
+    if (!_hasUser) return [];
     final raw = await localDatasource.getLocalGroupPosts(userId, groupId);
     if (raw == null) return [];
     return raw
@@ -94,7 +98,7 @@ class GroupRepository {
       page: page,
       limit: limit,
     );
-    if (page == 1 && sortBy == 'latest') {
+    if (page == 1 && sortBy == 'latest' && _hasUser) {
       await localDatasource.saveGroupPosts(userId, groupId, raw);
     }
     return raw
@@ -148,12 +152,15 @@ class GroupRepository {
 
   Future<void> unlikePost(String postId) => datasource.unlikePost(postId);
 
-  Future<void> invalidateGroupsCache() => localDatasource.clearGroups(userId);
+  Future<void> invalidateGroupsCache() =>
+      _hasUser ? localDatasource.clearGroups(userId) : Future.value();
 
   Future<void> invalidateGroupPostsCache(String groupId) =>
-      localDatasource.clearGroupPosts(userId, groupId);
+      _hasUser ? localDatasource.clearGroupPosts(userId, groupId) : Future.value();
 
-  Future<void> saveBookmarks(List<String> bookmarks) => localDatasource.saveBookmarks(userId, bookmarks);
+  Future<void> saveBookmarks(List<String> bookmarks) =>
+      _hasUser ? localDatasource.saveBookmarks(userId, bookmarks) : Future.value();
 
-  Future<List<String>> getBookmarks() => localDatasource.getBookmarks(userId);
+  Future<List<String>> getBookmarks() =>
+      _hasUser ? localDatasource.getBookmarks(userId) : Future.value([]);
 }

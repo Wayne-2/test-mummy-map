@@ -28,28 +28,19 @@ class WalletRemoteDatasource {
     return [];
   }
 
-  Future<Map<String, dynamic>> initiateTopup({
-    required double amount,
-    required String reference,
+  Future<TopUpInitiation> initiateTopup({
+    required int amountKobo,
     required String idempotencyKey,
   }) async {
     final res = await dio.post(
       '/api/v1/wallet/topup',
       data: {
-        'amount': amount,
-        'reference': reference,
+        'amount': amountKobo,
+        'provider': 'PAYSTACK',
+        'idempotencyKey': idempotencyKey,
       },
-      options: Options(headers: {'Idempotency-Key': idempotencyKey}),
     );
-    
-    // Unpack data object if it exists
-    if (res.data is Map<String, dynamic>) {
-      if (res.data['data'] != null && res.data['data'] is Map<String, dynamic>) {
-        return res.data['data'] as Map<String, dynamic>;
-      }
-      return res.data as Map<String, dynamic>;
-    }
-    return {};
+    return TopUpInitiation.fromJson(_unwrapData(res.data));
   }
 
   Future<void> verifyTopup(String reference) async {
@@ -59,7 +50,30 @@ class WalletRemoteDatasource {
     );
   }
 
-  Future<void> deductWallet(double amount) async {
-    await dio.post('/api/v1/wallet/deduct', data: {'amount': amount});
+  Future<Map<String, dynamic>> deductWallet({
+    required int amountKobo,
+    String? orderId,
+    String? description,
+  }) async {
+    final res = await dio.post(
+      '/api/v1/wallet/deduct',
+      data: {
+        'amount': amountKobo,
+        if (orderId != null && orderId.isNotEmpty) 'orderId': orderId,
+        if (description != null && description.isNotEmpty)
+          'description': description,
+      },
+    );
+    return _unwrapData(res.data);
+  }
+
+  Map<String, dynamic> _unwrapData(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      if (data['data'] != null && data['data'] is Map<String, dynamic>) {
+        return data['data'] as Map<String, dynamic>;
+      }
+      return data;
+    }
+    return {};
   }
 }

@@ -291,18 +291,48 @@ class _CartItemTile extends ConsumerWidget {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
-            child: Image.asset(
-              item.product.images.first,
-              width: 72,
-              height: 72,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 72,
-                height: 72,
-                color: Colors.grey.shade200,
-                child: const Icon(Icons.image_outlined,
-                    color: Colors.grey),
-              ),
+            child: Builder(
+              builder: (context) {
+                final img = item.product.images.isNotEmpty
+                    ? item.product.images.first
+                    : null;
+                if (img == null || img.isEmpty) {
+                  return Container(
+                    width: 72,
+                    height: 72,
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.image_outlined, color: Colors.grey),
+                  );
+                }
+                final isNetwork =
+                    img.startsWith('http://') || img.startsWith('https://');
+                if (isNetwork) {
+                  return Image.network(
+                    img,
+                    width: 72,
+                    height: 72,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 72,
+                      height: 72,
+                      color: Colors.grey.shade200,
+                      child: const Icon(Icons.image_outlined, color: Colors.grey),
+                    ),
+                  );
+                }
+                return Image.asset(
+                  img,
+                  width: 72,
+                  height: 72,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 72,
+                    height: 72,
+                    color: Colors.grey.shade200,
+                    child: const Icon(Icons.image_outlined, color: Colors.grey),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(width: 12),

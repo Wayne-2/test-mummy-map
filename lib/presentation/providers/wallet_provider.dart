@@ -28,18 +28,26 @@ class WalletNotifier extends StateNotifier<AsyncValue<void>> {
   final Ref _ref;
   final WalletRepository _repo;
 
+  static const int _minTopupKobo = 10000;
+
   WalletNotifier(this._ref, this._repo) : super(const AsyncData(null));
 
-  Future<Map<String, dynamic>?> initiateTopup({
-    required double amount,
-    required String reference,
+  Future<TopUpInitiation?> initiateTopup({
+    required double amountNgn,
     required String idempotencyKey,
   }) async {
+    final amountKobo = (amountNgn * 100).round();
+    if (amountKobo < _minTopupKobo) {
+      state = AsyncError(
+        'Minimum top-up is ₦100.',
+        StackTrace.current,
+      );
+      return null;
+    }
     state = const AsyncLoading();
     try {
       final result = await _repo.initiateTopup(
-        amount: amount,
-        reference: reference,
+        amountKobo: amountKobo,
         idempotencyKey: idempotencyKey,
       );
       state = const AsyncData(null);
@@ -62,6 +70,28 @@ class WalletNotifier extends StateNotifier<AsyncValue<void>> {
     } catch (e, st) {
       state = AsyncError(e, st);
       return false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> deductWallet({
+    required double amountNgn,
+    String? orderId,
+    String? description,
+  }) async {
+    state = const AsyncLoading();
+    try {
+      final result = await _repo.deductWallet(
+        amountKobo: (amountNgn * 100).round(),
+        orderId: orderId,
+        description: description,
+      );
+      _ref.invalidate(walletBalanceProvider);
+      _ref.invalidate(walletTransactionsProvider);
+      state = const AsyncData(null);
+      return result;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      return null;
     }
   }
 }

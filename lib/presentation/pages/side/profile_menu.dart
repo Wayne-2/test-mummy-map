@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mummymap/presentation/providers/settings_provider.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
-import 'package:mummymap/presentation/pages/auth/signin.dart';
+import 'package:mummymap/presentation/providers/shop_provider.dart';
+import 'package:mummymap/presentation/providers/groups_provider.dart';
+import 'package:mummymap/presentation/providers/calendar_provider.dart';
+import 'package:mummymap/presentation/providers/doctors_provider.dart';
+import 'package:mummymap/presentation/providers/profile_provider.dart';
 import 'package:mummymap/presentation/pages/side/profile/profile_page.dart';
 import 'package:mummymap/presentation/pages/side/articles/pregnancy_library.dart';
 import 'package:mummymap/presentation/pages/side/doctors/doctors_screen.dart';
@@ -154,10 +159,14 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
       await ref.read(authRepositoryProvider).logoutCurrentDevice();
     } catch (_) {}
     if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const SignIn()),
-      (_) => false,
-    );
+    // Invalidate user-scoped providers to prevent cross-account data leak
+    ref.invalidate(shopProvider);
+    ref.invalidate(groupsProvider);
+    ref.invalidate(calendarProvider);
+    ref.invalidate(doctorsProvider);
+    ref.invalidate(profileProvider);
+    if (!mounted) return;
+    context.go('/signin');
   }
 
   Future<void> _navigate(Widget page) async {

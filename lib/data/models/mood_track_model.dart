@@ -45,12 +45,14 @@ class MoodLog {
   final String mood;
   final String? notes;
   final DateTime loggedAt;
+  final bool isPendingSync;
 
   const MoodLog({
     this.id,
     required this.mood,
     this.notes,
     required this.loggedAt,
+    this.isPendingSync = false,
   });
 
   factory MoodLog.fromJson(Map<String, dynamic> json) {
@@ -74,6 +76,7 @@ class MoodLog {
       mood: (root['mood'] ?? 'OTHER').toString(),
       notes: root['notes'] as String?,
       loggedAt: parseDate(),
+      isPendingSync: root['isPendingSync'] == true,
     );
   }
 
@@ -86,4 +89,18 @@ class MoodLog {
     map.removeWhere((_, v) => v == null || v == '');
     return map;
   }
+
+  Map<String, dynamic> toStorageJson() => {
+        ...toCreateJson(),
+        if (id != null) 'id': id,
+        'isPendingSync': isPendingSync,
+      };
+
+  MoodLog copyWith({String? id, bool? isPendingSync}) => MoodLog(
+        id: id ?? this.id,
+        mood: mood,
+        notes: notes,
+        loggedAt: loggedAt,
+        isPendingSync: isPendingSync ?? this.isPendingSync,
+      );
 }

@@ -91,6 +91,13 @@ class WeightTrackNotifier extends StateNotifier<WeightTrackState> {
       uniqueMerged.sort((a, b) => a.recordedAt.compareTo(b.recordedAt));
       state = state.copyWith(entries: uniqueMerged, isLoading: false);
       await _repository.saveLocalHistory(uniqueMerged);
+
+      // Push any offline entries to the server now that we're online.
+      await _repository.flushPending();
+      final afterSync = await _repository.getLocalHistory();
+      if (afterSync.isNotEmpty) {
+        state = state.copyWith(entries: afterSync);
+      }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,

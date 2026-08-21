@@ -35,7 +35,7 @@ class _SignInState extends ConsumerState<SignIn> {
 
     try {
       final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
+      final password = _passwordController.text;
 
       await ref.read(authRepositoryProvider).login(
             email: email,

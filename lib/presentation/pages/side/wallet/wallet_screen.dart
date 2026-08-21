@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 import 'package:mummymap/presentation/providers/wallet_provider.dart';
+import 'package:mummymap/presentation/pages/side/wallet/paystack_checkout_screen.dart';
 import 'package:mummymap/presentation/pages/side/wallet/widget/wallet_widgets.dart';
 import 'transactions_screen.dart';
 import 'transaction_detail_screen.dart';
@@ -302,76 +302,52 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _DepositSheet(
+      builder: (sheetCtx) => _DepositSheet(
         onDeposit: (amount) async {
-          final reference = const Uuid().v4();
+          // Close sheet first to avoid Navigator race when pushing checkout
+          Navigator.pop(sheetCtx);
           final idempotencyKey = const Uuid().v4();
-          
+
           final result = await ref.read(walletNotifierProvider.notifier).initiateTopup(
-            amount: amount,
-            reference: reference,
+            amountNgn: amount,
             idempotencyKey: idempotencyKey,
           );
-          
-          if (result != null && result['authorizationUrl'] != null) {
-            final urlStr = result['authorizationUrl'].toString();
-            final url = Uri.tryParse(urlStr);
-            if (url != null && await canLaunchUrl(url)) {
-              await launchUrl(url, mode: LaunchMode.externalApplication);
-              if (mounted) {
-                _showVerificationDialog(context, reference);
-              }
-            } else {
+
+          if (result != null && result.authorizationUrl.isNotEmpty) {
+            final reference =
+                result.reference.isNotEmpty ? result.reference : idempotencyKey;
+            final success = await Navigator.of(context).push<bool>(
+              MaterialPageRoute(
+                builder: (_) => PaystackCheckoutScreen(
+                  authorizationUrl: result.authorizationUrl,
+                  fallbackReference: reference,
+                  verify: (r) => ref
+                      .read(walletNotifierProvider.notifier)
+                      .verifyTopup(r),
+                ),
+              ),
+            );
+            if (success == true) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Could not open payment link')),
+                  const SnackBar(content: Text('Payment verified successfully!')),
+                );
+              }
+            } else if (success == false) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Payment was not completed.')),
                 );
               }
             }
           } else {
-             if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Failed to initiate topup')),
-                );
-              }
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Failed to initiate topup')),
+              );
+            }
           }
         },
-      ),
-    );
-  }
-
-  void _showVerificationDialog(BuildContext context, String reference) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Verify Payment'),
-        content: const Text('Did you complete the payment successfully?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final success = await ref.read(walletNotifierProvider.notifier).verifyTopup(reference);
-              if (mounted) {
-                if (success) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Payment verified successfully!')),
-                  );
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Payment verification failed. Please try again later.')),
-                  );
-                }
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3F2868)),
-            child: const Text('I have paid', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }
@@ -510,7 +486,6 @@ class _DepositSheetState extends State<_DepositSheet> {
                         await widget.onDeposit(amount);
                         if (mounted) {
                           setState(() => _isLoading = false);
-                          Navigator.pop(context);
                         }
                       },
                 style: ElevatedButton.styleFrom(

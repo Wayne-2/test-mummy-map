@@ -17,4 +17,5 @@ abstract class ShopRepository {
 
   Future<List<String>> getWishlist();
   Future<void> saveWishlist(List<String> ids);
+  Future<void> flushPendingCartOps();
 }

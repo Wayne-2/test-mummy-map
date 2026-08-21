@@ -6,8 +6,28 @@ class ShopLocalDataSource {
   static const _boxName = 'shop_box';
   static const _cartKey = 'shop_cart';
   static const _wishlistKey = 'shop_wishlist';
+  static const _pendingOpsKey = 'pending_cart_ops';
 
   Box<String> get _box => Hive.box<String>(_boxName);
+
+  Future<List<Map<String, dynamic>>> getPendingCartOps(String userId) async {
+    final json = _box.get('${_pendingOpsKey}_$userId');
+    if (json == null) return [];
+    try {
+      return List<Map<String, dynamic>>.from(jsonDecode(json) as List);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> savePendingCartOps(
+      String userId, List<Map<String, dynamic>> ops) async {
+    await _box.put('${_pendingOpsKey}_$userId', jsonEncode(ops));
+  }
+
+  Future<void> clearPendingCartOps(String userId) async {
+    await _box.delete('${_pendingOpsKey}_$userId');
+  }
 
   Future<List<CartItem>> getCart(String userId) async {
     final json = _box.get('${_cartKey}_$userId');

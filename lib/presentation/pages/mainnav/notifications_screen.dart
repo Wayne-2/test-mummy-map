@@ -1,79 +1,87 @@
 import 'package:flutter/material.dart';
-
-enum _NotifType { reminder, group, message, appointment }
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:mummymap/data/models/notification_model.dart';
+import 'package:mummymap/presentation/pages/mainnav/groups/group_detail.dart';
+import 'package:mummymap/presentation/pages/side/doctors/minor%20screens/appointment_detail_screen.dart';
+import 'package:mummymap/presentation/providers/notification_provider.dart';
 
 enum _FilterTab { all, unread, read }
 
-class AppNotification {
-  final String id;
-  final _NotifType type;
-  final String text;
-  final String boldPart;
-  final DateTime createdAt;
-  bool isRead;
-
-  AppNotification({
-    required this.id,
-    required this.type,
-    required this.text,
-    required this.boldPart,
-    required this.createdAt,
-    this.isRead = false,
-  });
-}
-
-class NotificationsScreen extends StatefulWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  State<NotificationsScreen> createState() => _NotificationsScreenState();
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-class _NotificationsScreenState extends State<NotificationsScreen> {
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   _FilterTab _activeTab = _FilterTab.all;
 
-  final List<AppNotification> _notifications = [];
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => ref.read(notificationProvider.notifier).load());
+  }
 
   List<AppNotification> get _filtered {
+    final notifications = ref.watch(notificationProvider).notifications;
     switch (_activeTab) {
       case _FilterTab.unread:
-        return _notifications.where((n) => !n.isRead).toList();
+        return notifications.where((n) => !n.isRead).toList();
       case _FilterTab.read:
-        return _notifications.where((n) => n.isRead).toList();
+        return notifications.where((n) => n.isRead).toList();
       case _FilterTab.all:
-        return _notifications;
+        return notifications;
     }
   }
 
-  int get _unreadCount => _notifications.where((n) => !n.isRead).length;
-  int get _readCount => _notifications.where((n) => n.isRead).length;
+  int get _unreadCount => ref.watch(notificationProvider).unreadCount;
+  int get _readCount =>
+      ref.watch(notificationProvider).notifications.length - _unreadCount;
+
+  Future<void> _refresh() async {
+    await ref.read(notificationProvider.notifier).load(force: true);
+  }
 
   void _markAllAsRead() {
-    setState(() {
-      for (final n in _notifications) {
-        n.isRead = true;
-      }
-    });
+    ref.read(notificationProvider.notifier).markAllAsRead();
   }
 
-  void _markAsRead(String id) {
-    setState(() {
-      _notifications.firstWhere((n) => n.id == id).isRead = true;
-    });
+  void _onTap(AppNotification n) {
+    ref.read(notificationProvider.notifier).markAsRead(n.id);
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    _deepLink(n);
   }
 
-  IconData _iconFor(_NotifType type) {
-    switch (type) {
-      case _NotifType.reminder:
-        return Icons.notifications_outlined;
-      case _NotifType.group:
-        return Icons.group_outlined;
-      case _NotifType.message:
-        return Icons.chat_bubble_outline;
-      case _NotifType.appointment:
-        return Icons.calendar_today_outlined;
+  void _deepLink(AppNotification n) {
+    final data = n.data;
+    switch (n.category) {
+      case NotificationCategory.appointment:
+        if (data.appointmentId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  AppointmentDetailScreen(appointmentId: data.appointmentId!),
+            ),
+          );
+        }
+        break;
+      case NotificationCategory.community:
+        if (data.groupId != null) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => GroupDetail(groupId: data.groupId!),
+            ),
+          );
+        }
+        break;
+      default:
+        break;
     }
   }
+
+  IconData _iconFor(NotificationCategory category) => category.icon;
 
   String _timeLabel(AppNotification n) {
     final diff = DateTime.now().difference(n.createdAt);
@@ -129,7 +137,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = _groupByDate(_filtered);
+    final state = ref.watch(notificationProvider);
+    final filtered = _filtered;
+    final grouped = _groupByDate(filtered);
     final items = _buildItems(grouped);
 
     return Scaffold(
@@ -186,32 +196,37 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: _FilterBar(
                 active: _activeTab,
-                total: _notifications.length,
+                total: state.notifications.length,
                 unread: _unreadCount,
                 read: _readCount,
                 onChanged: (tab) => setState(() => _activeTab = tab),
               ),
             ),
             Expanded(
-              child: _filtered.isEmpty
-                  ? _EmptyState(tab: _activeTab)
-                  : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
-                      itemCount: items.length,
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        if (item is String) {
-                          return _DateHeader(label: item);
-                        }
-                        final n = item as AppNotification;
-                        return _NotificationTile(
-                          notification: n,
-                          icon: _iconFor(n.type),
-                          timeLabel: _timeLabel(n),
-                          onTap: () => _markAsRead(n.id),
-                        );
-                      },
-                    ),
+              child: state.isLoading && filtered.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : filtered.isEmpty
+                      ? _EmptyState(tab: _activeTab)
+                      : RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount: items.length,
+                            itemBuilder: (context, index) {
+                              final item = items[index];
+                              if (item is String) {
+                                return _DateHeader(label: item);
+                              }
+                              final n = item as AppNotification;
+                              return _NotificationTile(
+                                notification: n,
+                                icon: _iconFor(n.category),
+                                timeLabel: _timeLabel(n),
+                                onTap: () => _onTap(n),
+                              );
+                            },
+                          ),
+                        ),
             ),
           ],
         ),
@@ -402,6 +417,15 @@ class _NotificationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final text = notification.boldPart.isNotEmpty
+        ? '${notification.title}\n${notification.body}'
+        : notification.body.isNotEmpty
+            ? notification.body
+            : notification.title;
+    final bold = notification.boldPart.isNotEmpty
+        ? notification.title
+        : notification.boldPart;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -431,8 +455,7 @@ class _NotificationTile extends StatelessWidget {
                 children: [
                   RichText(
                     text: TextSpan(
-                      children: _parseText(
-                          notification.text, notification.boldPart),
+                      children: _parseText(text, bold),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,

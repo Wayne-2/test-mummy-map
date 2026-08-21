@@ -14,14 +14,12 @@ class WalletRepository {
     return remoteDatasource.getTransactions();
   }
 
-  Future<Map<String, dynamic>> initiateTopup({
-    required double amount,
-    required String reference,
+  Future<TopUpInitiation> initiateTopup({
+    required int amountKobo,
     required String idempotencyKey,
   }) {
     return remoteDatasource.initiateTopup(
-      amount: amount,
-      reference: reference,
+      amountKobo: amountKobo,
       idempotencyKey: idempotencyKey,
     );
   }
@@ -30,7 +28,15 @@ class WalletRepository {
     return remoteDatasource.verifyTopup(reference);
   }
 
-  Future<void> deductWallet(double amount) {
-    return remoteDatasource.deductWallet(amount);
+  Future<Map<String, dynamic>> deductWallet({
+    required int amountKobo,
+    String? orderId,
+    String? description,
+  }) {
+    return remoteDatasource.deductWallet(
+      amountKobo: amountKobo,
+      orderId: orderId,
+      description: description,
+    );
   }
 }

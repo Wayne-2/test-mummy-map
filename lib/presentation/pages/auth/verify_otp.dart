@@ -123,10 +123,16 @@ class _VerifyOtpState extends ConsumerState<VerifyOtp> {
 
   Future<void> _resend() async {
     try {
-      await ref.read(authRepositoryProvider).login(
-            email: widget.email,
-            password: widget.password,
-          );
+      // Use dedicated resend endpoint; avoids re-login side effects for signup
+      try {
+        await ref.read(authRepositoryProvider).resendOtp(email: widget.email);
+      } catch (_) {
+        // Fallback to login for legacy backend that only supports login-resend
+        await ref.read(authRepositoryProvider).login(
+              email: widget.email,
+              password: widget.password,
+            );
+      }
       _startResendTimer();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -149,6 +155,18 @@ class _VerifyOtpState extends ConsumerState<VerifyOtp> {
   }
 
   void _onDigitChanged(int index, String value) {
+    // Handle paste of full OTP (e.g. "123456")
+    if (value.length > 1) {
+      final digits = value.replaceAll(RegExp(r'[^0-9]'), '').split('');
+      for (int i = 0; i < digits.length && (index + i) < 6; i++) {
+        _controllers[index + i].text = digits[i];
+      }
+      final next = (index + digits.length).clamp(0, 5);
+      _focusNodes[next].requestFocus();
+      setState(() {});
+      if (_otp.length == 6) _verify();
+      return;
+    }
     if (value.length == 1 && index < 5) {
       _focusNodes[index + 1].requestFocus();
     } else if (value.isEmpty && index > 0) {

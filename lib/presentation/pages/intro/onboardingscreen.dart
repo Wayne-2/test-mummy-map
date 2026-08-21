@@ -36,6 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _navigateToSignUp() {
     context.go('/signup');
   }
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();

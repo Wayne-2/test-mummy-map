@@ -69,7 +69,7 @@ class _SignUpState extends ConsumerState<SignUp> {
 
     try {
       final email = _emailController.text.trim();
-      final password = _passwordController.text.trim();
+      final password = _passwordController.text;
 
       await ref.read(authRepositoryProvider).register(
             email: email,

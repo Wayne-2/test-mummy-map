@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:mummymap/data/models/doctor_model.dart';
 import 'package:mummymap/presentation/providers/doctors_provider.dart';
+import 'package:mummymap/presentation/pages/side/doctors/minor%20screens/appointment_detail_screen.dart';
 import '../../../../../data/models/calendar_models.dart';
 import '../../../../providers/calendar_provider.dart';
 import '../../calendar/widgets/add_event_sheet.dart';
@@ -181,15 +182,22 @@ class _AppointmentCard extends StatelessWidget {
       }
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE0E0E0)),
+    return GestureDetector(
+      onTap: () => Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => AppointmentDetailScreen(appointmentId: appointment.id),
+        ),
       ),
-      child: Row(
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFE0E0E0)),
+        ),
+        child: Row(
         children: [
           Container(
             width: 48,
@@ -254,6 +262,7 @@ class _AppointmentCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

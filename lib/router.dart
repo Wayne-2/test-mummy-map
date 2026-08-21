@@ -1,6 +1,8 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:mummymap/domain/repositories/auth_repository.dart';
 import 'package:mummymap/presentation/pages/intro/splashscreen.dart';
 import 'package:mummymap/presentation/pages/intro/onboardingscreen.dart';
 import 'package:mummymap/presentation/pages/intro/getstarted.dart';
@@ -17,6 +19,40 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: navigatorKey,
     initialLocation: '/',
+    redirect: (context, state) async {
+      const storage = FlutterSecureStorage();
+      final refreshToken =
+          await storage.read(key: AuthStorageKeys.refreshToken);
+      final loggedIn = refreshToken != null && refreshToken.isNotEmpty;
+      final location = state.matchedLocation;
+      // Public routes that don't require auth
+      const publicRoutes = [
+        '/',
+        '/onboarding',
+        '/get-started',
+        '/signin',
+        '/signup',
+        '/verify-otp',
+        '/forgot-password',
+      ];
+      const authRoutes = [
+        '/signin',
+        '/signup',
+        '/get-started',
+        '/onboarding',
+        '/verify-otp',
+        '/forgot-password',
+      ];
+      // Splash handles initial routing; don't redirect from '/'
+      if (location == '/') return null;
+      if (!loggedIn && !publicRoutes.contains(location)) {
+        return '/signin';
+      }
+      if (loggedIn && authRoutes.contains(location)) {
+        return '/home';
+      }
+      return null;
+    },
     routes: [
       GoRoute(
         path: '/',
