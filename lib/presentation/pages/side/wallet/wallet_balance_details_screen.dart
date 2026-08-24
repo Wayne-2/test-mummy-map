@@ -170,14 +170,19 @@ class _WalletBalanceDetailsScreenState
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (_) => _AddMoneySheet(
+      builder: (sheetCtx) => _AddMoneySheet(
         onDeposit: (amount) async {
+          Navigator.pop(sheetCtx);
           final idempotencyKey = const Uuid().v4();
           
-          final result = await ref.read(walletNotifierProvider.notifier).initiateTopup(
+          final notifier = ref.read(walletNotifierProvider.notifier);
+          final result = await notifier.initiateTopup(
             amountNgn: amount,
             idempotencyKey: idempotencyKey,
           );
+          
+          final notifierState = ref.read(walletNotifierProvider);
+          final errMsg = notifierState is AsyncError ? notifierState.error.toString() : null;
           
           if (result != null && result.authorizationUrl.isNotEmpty) {
             final reference =
@@ -196,22 +201,21 @@ class _WalletBalanceDetailsScreenState
             if (success == true) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Payment verified successfully!')),
+                  const SnackBar(content: Text('Payment verified successfully!'), backgroundColor: Colors.green),
                 );
               }
             } else if (success == false) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Payment was not completed.')),
+                  SnackBar(content: Text(errMsg ?? 'Payment was not completed.')),
                 );
               }
             }
           } else {
             if (mounted) {
+              final msg = errMsg ?? '';
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to initiate topup')),
+                SnackBar(content: Text(msg.isNotEmpty ? 'Failed to initiate topup: $msg' : 'Failed to initiate topup – check connection/login'), backgroundColor: Colors.red),
               );
             }
           }
@@ -307,13 +311,13 @@ class _AddMoneySheetState extends State<_AddMoneySheet> {
                     ? null
                     : () async {
                         final amount = double.tryParse(_amountController.text) ?? 0;
-                        if (amount <= 0) return;
+                        if (amount <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount (min ₦100)')));
+                          return;
+                        }
                         setState(() => _isLoading = true);
                         await widget.onDeposit(amount);
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                          Navigator.pop(context);
-                        }
+                        if (mounted) setState(() => _isLoading = false);
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),

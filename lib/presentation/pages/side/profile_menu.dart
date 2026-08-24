@@ -171,10 +171,12 @@ class _ProfileMenuState extends ConsumerState<ProfileMenu>
 
   Future<void> _navigate(Widget page) async {
     await _controller.reverse();
+    // Capture navigator before overlay is removed – otherwise `mounted` becomes false and push is skipped
+    final navigator = Navigator.of(context);
     widget.onClose();
-    if (!mounted) return;
-    Navigator.push(
-      context,
+    // Small delay to let the menu close animation finish before pushing
+    await Future.delayed(const Duration(milliseconds: 80));
+    navigator.push(
       MaterialPageRoute(builder: (_) => page),
     );
   }

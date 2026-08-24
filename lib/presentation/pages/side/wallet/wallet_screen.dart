@@ -114,6 +114,37 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
   Widget _buildHeroCard(BuildContext context) {
     final balanceAsync = ref.watch(walletBalanceProvider);
+    // Handle loading/error explicitly – previous `value ?? 0` hid errors and caused blank screen on 401
+    if (balanceAsync.hasError) {
+      final err = balanceAsync.error.toString();
+      // Log for debug, show retry UI inline
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(horizontal: 0),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4A1878), Color(0xFF2D0F4E), Color(0xFF6B3A9E)]),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
+          child: Column(children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white70, size: 28),
+            const SizedBox(height: 8),
+            const Text('Could not load balance', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(err.length > 80 ? '${err.substring(0, 80)}...' : err, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+            const SizedBox(height: 12),
+            ElevatedButton(onPressed: () => ref.invalidate(walletBalanceProvider), style: ElevatedButton.styleFrom(backgroundColor: Colors.white, foregroundColor: Color(0xFF3F2868)), child: const Text('Retry')),
+          ]),
+        ),
+      );
+    }
+    if (balanceAsync.isLoading && balanceAsync.value == null) {
+      return Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4A1878), Color(0xFF2D0F4E), Color(0xFF6B3A9E)])),
+        child: const Padding(padding: EdgeInsets.fromLTRB(24, 48, 24, 48), child: Center(child: CircularProgressIndicator(color: Colors.white))),
+      );
+    }
     final _balance = balanceAsync.value ?? 0.0;
 
     return Container(
@@ -237,6 +268,21 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
   Widget _buildTransactionHistory(BuildContext context) {
     final txAsync = ref.watch(walletTransactionsProvider);
+    if (txAsync.isLoading && txAsync.value == null) {
+      return const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator(color: Color(0xFF3F2868))));
+    }
+    if (txAsync.hasError) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Transaction History', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
+          const SizedBox(height: 8),
+          Text('Failed to load: ${txAsync.error}', style: const TextStyle(color: Colors.red, fontSize: 12)),
+          const SizedBox(height: 8),
+          OutlinedButton(onPressed: () => ref.invalidate(walletTransactionsProvider), child: const Text('Retry')),
+        ]),
+      );
+    }
     final transactions = txAsync.value ?? [];
     final preview = transactions.take(5).toList();
 
@@ -308,10 +354,14 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           Navigator.pop(sheetCtx);
           final idempotencyKey = const Uuid().v4();
 
-          final result = await ref.read(walletNotifierProvider.notifier).initiateTopup(
+          final notifier = ref.read(walletNotifierProvider.notifier);
+          final result = await notifier.initiateTopup(
             amountNgn: amount,
             idempotencyKey: idempotencyKey,
           );
+
+          final notifierState = ref.read(walletNotifierProvider);
+          final errMsg = notifierState is AsyncError ? (notifierState.error.toString()) : null;
 
           if (result != null && result.authorizationUrl.isNotEmpty) {
             final reference =
@@ -330,20 +380,22 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
             if (success == true) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Payment verified successfully!')),
+                  const SnackBar(content: Text('Payment verified successfully!'), backgroundColor: Colors.green),
                 );
               }
             } else if (success == false) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Payment was not completed.')),
+                  SnackBar(content: Text(errMsg ?? 'Payment was not completed. ${errMsg ?? ""}')),
                 );
               }
             }
           } else {
             if (mounted) {
+              final msg = errMsg ?? '';
+              // Show specific error (e.g., Minimum top-up is ₦100, or 401, or network)
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Failed to initiate topup')),
+                SnackBar(content: Text(msg.isNotEmpty ? 'Failed to initiate topup: $msg' : 'Failed to initiate topup – check connection/login'), backgroundColor: Colors.red),
               );
             }
           }
@@ -481,12 +533,17 @@ class _DepositSheetState extends State<_DepositSheet> {
                     ? null
                     : () async {
                         final amount = double.tryParse(_controller.text) ?? 0;
-                        if (amount <= 0) return;
+                        if (amount <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Enter a valid amount (min ₦100)')));
+                          return;
+                        }
+                        if (amount < 100) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Minimum top-up is ₦100')));
+                          return;
+                        }
                         setState(() => _isLoading = true);
                         await widget.onDeposit(amount);
-                        if (mounted) {
-                          setState(() => _isLoading = false);
-                        }
+                        if (mounted) setState(() => _isLoading = false);
                       },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3F2868),

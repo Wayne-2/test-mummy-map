@@ -8,6 +8,7 @@ import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:dio/dio.dart';
 import 'package:mummymap/presentation/providers/profile_provider.dart';
+import 'package:mummymap/services/push_token_helper.dart';
 
 class VerifyOtp extends ConsumerStatefulWidget {
   final String email;
@@ -77,6 +78,11 @@ class _VerifyOtpState extends ConsumerState<VerifyOtp> {
           );
 
       if (!mounted) return;
+
+      // Ensure push token is registered now that user is authenticated
+      try {
+        await registerPushToken(ref);
+      } catch (_) {}
 
       if (widget.isSignup) {
         context.go('/profile-setup');

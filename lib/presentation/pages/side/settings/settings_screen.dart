@@ -8,6 +8,9 @@ import 'package:mummymap/presentation/providers/profile_provider.dart';
 import 'package:mummymap/presentation/providers/auth_provider.dart';
 import 'package:mummymap/presentation/pages/profile_setup/steps/get_to_know_you.dart';
 import 'package:mummymap/presentation/pages/auth/signin.dart';
+import 'package:mummymap/main.dart' show oneSignalService, pushNotificationService;
+import 'package:mummymap/services/push_token_helper.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -216,6 +219,20 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       label: 'Reminders',
                       value: settings.reminders,
                       onChanged: (v) => notifier.setReminders(v),
+                    ),
+                    _buildDivider(),
+                    _buildTappableItem(
+                      icon: Icons.notifications_active_outlined,
+                      label: 'Push Notifications',
+                      trailing: 'Manage',
+                      onTap: () => _handlePushSettings(context),
+                    ),
+                    _buildDivider(),
+                    _buildTappableItem(
+                      icon: Icons.bug_report_outlined,
+                      label: 'Test Push Notification',
+                      trailing: 'Send',
+                      onTap: () => _handleTestPush(context),
                     ),
                     _buildDivider(),
                     _buildDropdownItem(
@@ -741,6 +758,69 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return months[month];
+  }
+
+  Future<void> _handlePushSettings(BuildContext context) async {
+    final status = await Permission.notification.status;
+    final oneSignalId = oneSignalService.subscriptionId ?? 'Not available yet';
+    final fcmToken = await pushNotificationService.getFcmToken() ?? 'Not available';
+    if (!context.mounted) return;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
+          const SizedBox(height: 20),
+          const Text('Push Notifications', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF1A1A1A))),
+          const SizedBox(height: 8),
+          Text('Status: ${status.isGranted ? "Granted" : status.isPermanentlyDenied ? "Permanently denied – enable in Settings" : "Not granted"}', style: const TextStyle(fontSize: 13, color: Color(0xFF6A6A6A))),
+          const SizedBox(height: 12),
+          SelectableText('OneSignal ID: $oneSignalId', style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E))),
+          const SizedBox(height: 6),
+          SelectableText('FCM token: ${fcmToken.length > 40 ? "${fcmToken.substring(0, 40)}..." : fcmToken}', style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E))),
+          const SizedBox(height: 20),
+          SizedBox(width: double.infinity, child: ElevatedButton(onPressed: () async {
+            Navigator.pop(context);
+            final granted = await oneSignalService.requestPermission();
+            await pushNotificationService.requestPermission();
+            if (!context.mounted) return;
+            if (granted) {
+              await registerPushToken(ref);
+              if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notifications enabled and token registered'), backgroundColor: Colors.green));
+            } else {
+              final permanentlyDenied = await Permission.notification.isPermanentlyDenied;
+              if (permanentlyDenied && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Permission denied. Please enable notifications in system Settings.'), action: SnackBarAction(label: 'Open Settings', onPressed: () => openAppSettings())));
+              } else if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Notification permission denied')));
+              }
+            }
+          }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3F2868), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Enable Notifications', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)))),
+          const SizedBox(height: 8),
+          SizedBox(width: double.infinity, child: OutlinedButton(onPressed: () => openAppSettings(), style: OutlinedButton.styleFrom(side: const BorderSide(color: Color(0xFFE0E0E0)), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)), padding: const EdgeInsets.symmetric(vertical: 14)), child: const Text('Open System Settings', style: TextStyle(color: Color(0xFF1A1A1A))))),
+        ]),
+      ),
+    );
+  }
+
+  Future<void> _handleTestPush(BuildContext context) async {
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Registering token and checking status…')));
+    await registerPushToken(ref);
+    final id = oneSignalService.subscriptionId;
+    final fcm = await pushNotificationService.getFcmToken();
+    if (!context.mounted) return;
+    showDialog(context: context, builder: (_) => AlertDialog(
+      title: const Text('Push Status'),
+      content: SingleChildScrollView(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+        SelectableText('OneSignal ID:\n${id ?? "null – try again in a few seconds"}\n'),
+        SelectableText('FCM token:\n${fcm ?? "null"}\n'),
+        const Text('If IDs are present, OneSignal dashboard can now send a test push to this device.\nCheck OneSignal > Messages > New Push > Send to Subscription ID.', style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E))),
+      ])),
+      actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
+    ));
   }
 
   void _confirmDeleteAccount(BuildContext context) {
